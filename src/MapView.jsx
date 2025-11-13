@@ -13,7 +13,7 @@ const EMOTION_COLORS = {
   hype: '#a855f7'       // lila
 };
 
-// Cyberpunk style – sötét, neon vonalakkal
+// Cyberpunk style – JAVÍTOTT verzió, látható földrészekkel
 const CYBERPUNK_STYLE = {
   version: 8,
   glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
@@ -28,7 +28,7 @@ const CYBERPUNK_STYLE = {
       id: 'background',
       type: 'background',
       paint: {
-        'background-color': '#020617' // majdnem fekete
+        'background-color': '#020617' // Eredeti sötét háttér marad
       }
     },
     {
@@ -37,7 +37,8 @@ const CYBERPUNK_STYLE = {
       source: 'openmaptiles',
       'source-layer': 'landcover',
       paint: {
-        'fill-color': '#020617'
+        // JAVÍTÁS: A föld kap egy nagyon sötét, de a háttértől eltérő színt
+        'fill-color': '#0f172a' 
       }
     },
     {
@@ -46,7 +47,8 @@ const CYBERPUNK_STYLE = {
       source: 'openmaptiles',
       'source-layer': 'water',
       paint: {
-        'fill-color': '#020617',
+        // JAVÍTÁS: A víz is kap egy halványan eltérő színt
+        'fill-color': '#080f23',
         'fill-outline-color': '#0ea5e9'
       }
     },
@@ -59,7 +61,8 @@ const CYBERPUNK_STYLE = {
       paint: {
         'line-color': '#22d3ee',
         'line-width': 1.2,
-        'line-opacity': 0.4
+        // JAVÍTÁS: Picit jobban látható
+        'line-opacity': 0.5
       }
     },
     {
@@ -71,7 +74,7 @@ const CYBERPUNK_STYLE = {
       paint: {
         'line-color': '#4f46e5',
         'line-width': 0.6,
-        'line-opacity': 0.25
+        'line-opacity': 0.3
       }
     },
     {
@@ -84,6 +87,7 @@ const CYBERPUNK_STYLE = {
         'line-color': '#a855f7',
         'line-width': 2.4,
         'line-opacity': 0.9
+        // JAVÍTÁS: 'line-glow-color' nem létező tulajdonság, törölve
       }
     },
     {
@@ -117,7 +121,8 @@ const CYBERPUNK_STYLE = {
       'source-layer': 'transportation',
       filter: ['in', 'class', 'residential', 'service', 'unclassified'],
       paint: {
-        'line-color': '#1f2937',
+        // JAVÍTÁS: Ez a szín túl sötét volt, láthatatlan lett volna
+        'line-color': '#334155', 
         'line-width': 0.4,
         'line-opacity': 0.7
       }
@@ -154,7 +159,7 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: CYBERPUNK_STYLE, // <-- ITT TÖRTÉNT A CSERE
+      style: CYBERPUNK_STYLE, // A javított stílust használjuk
       center: [16, 47],
       zoom: 2,
       attributionControl: false
@@ -229,11 +234,9 @@ export function MapView({ coords, onBoundsChange, pulses }) {
         return;
       }
 
-      // Külső konténer a pozicionáláshoz
       const container = document.createElement('div');
       container.className = 'pulse-marker-container';
 
-      // Belső elem az animációhoz
       const el = document.createElement('div');
       el.className = 'pulse-marker';
       container.appendChild(el);
