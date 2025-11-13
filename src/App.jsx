@@ -3,14 +3,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { EMOTIONS } from './emotions';
 
 const SESSION_ID = 'global';
-const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 perc
+const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
 
 function getOrCreateUserId() {
   if (typeof window === 'undefined') return null;
   const key = 'emotionglobe_user_id';
   let id = window.localStorage.getItem(key);
   if (!id) {
-    id = crypto.randomUUID?.() ?? `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    id =
+      crypto.randomUUID?.() ??
+      `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     window.localStorage.setItem(key, id);
   }
   return id;
@@ -18,18 +20,18 @@ function getOrCreateUserId() {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
-  const [gpsAllowed, setGpsAllowed] = useState(null); // null = még nem tudjuk, true/false
+  const [gpsAllowed, setGpsAllowed] = useState(null); // null = unknown, true/false
   const [coords, setCoords] = useState(null); // { lat, lng }
   const [lastVoteAt, setLastVoteAt] = useState(null);
-  const [events, setEvents] = useState([]); // csak lokális debughoz
+  const [events, setEvents] = useState([]); // local debug only
 
-  // userId init
+  // init userId
   useEffect(() => {
     const id = getOrCreateUserId();
     setUserId(id);
   }, []);
 
-  // GPS bekérés induláskor
+  // ask for GPS on load
   useEffect(() => {
     if (!('geolocation' in navigator)) {
       setGpsAllowed(false);
@@ -43,7 +45,7 @@ export default function App() {
         setGpsAllowed(true);
       },
       err => {
-        console.error('GPS hiba:', err);
+        console.error('GPS error:', err);
         setGpsAllowed(false);
       },
       {
@@ -53,7 +55,7 @@ export default function App() {
     );
   }, []);
 
-  // hány ms telt el az utolsó szavazás óta
+  // how much time since last vote
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
     return Date.now() - lastVoteAt;
@@ -74,15 +76,14 @@ export default function App() {
       timestamp: new Date().toISOString()
     };
 
-    // Itt később: elküldjük Supabase-nek / backendnek
+    // Later: send this to Supabase / backend
     console.log('EVENT SENT:', event);
 
-    // lokális state-be is betesszük debug/összesítés miatt
+    // local debug
     setEvents(prev => [...prev, event]);
     setLastVoteAt(Date.now());
   }
 
-  // visszaszámláló szöveg (2 perc korlát)
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
@@ -96,33 +97,33 @@ export default function App() {
       <main className="app-main">
         <div className="status-box">
           <div>
-            <strong>User ID:</strong> {userId || 'betöltés...'}
+            <strong>User ID:</strong> {userId || 'loading...'}
           </div>
           <div>
-            <strong>GPS:</strong>{' '}
+            <strong>Location:</strong>{' '}
             {gpsAllowed === null
-              ? 'engedély kérve...'
+              ? 'requesting permission...'
               : gpsAllowed
               ? `OK (${coords?.lat}, ${coords?.lng})`
-              : 'Nincs engedély – szavazni nem tudsz'}
+              : 'Permission denied – you cannot vote'}
           </div>
           <div>
-            <strong>Szavazási limit:</strong>{' '}
+            <strong>Vote limit:</strong>{' '}
             {gpsAllowed !== true
-              ? 'előbb engedélyezd a helyhozzáférést'
+              ? 'enable location to vote'
               : canVote
-              ? 'szavazhatsz most'
-              : `várj még ${remainingSec} mp-et`}
+              ? 'you can vote now'
+              : `wait ${remainingSec} seconds`}
           </div>
           <div>
-            <strong>Lokális eventek száma:</strong> {events.length}
+            <strong>Local events:</strong> {events.length}
           </div>
         </div>
 
         <div>
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
-            Válassz egy érzést, és 2 percenként egyszer “rezeghetsz” a saját
-            pozíciódról.
+            Select how you feel. You can send one pulse every 2 minutes from
+            your current location.
           </p>
           <div className="emotion-buttons">
             {EMOTIONS.map(e => (
@@ -144,8 +145,8 @@ export default function App() {
 
       <footer className="app-footer">
         <div style={{ fontSize: 10, opacity: 0.6 }}>
-          💡 Jelenleg az események csak a konzolra mennek (EVENT SENT). Következő
-          lépés: bekötjük a real-time backendet és a térképet.
+          💡 Right now events only go to the console (EVENT SENT). Next step:
+          connect a real-time backend and the map.
         </div>
       </footer>
     </div>
