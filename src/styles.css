@@ -160,17 +160,11 @@ button {
 
 /* pulse marker – erősebb, nagyobb, hogy biztos lásd */
 .pulse-marker {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 1) 0%,
-    rgba(255, 255, 255, 0) 70%
-  );
-  transform: scale(0.2);
-  opacity: 1;
-  animation: pulse-out 2s ease-out forwards;
+  background: red;
+  opacity: 0.8;
 }
 
 @keyframes pulse-out {
