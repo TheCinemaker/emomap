@@ -36,17 +36,17 @@ export function MapView({ coords, onBoundsChange, pulses }) {
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
 
-    map.on('moveend', () => {
-      const b = map.getBounds();
-      const bounds = {
-        north: b.getNorth(),
-        south: b.getSouth(),
-        east: b.getSouth() > b.getNorth() ? b.getSouth() : b.getSouth(), // (optional fix later, most important az alap)
-        east: b.getEast(),
-        west: b.getWest()
-      };
-      onBoundsChange?.(bounds);
-    });
+   map.on('moveend', () => {
+  const b = map.getBounds();
+  const bounds = {
+    north: b.getNorth(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    west: b.getWest()
+  };
+  onBoundsChange?.(bounds);
+});
+
 
     map.on('load', () => {
       const b = map.getBounds();
@@ -126,6 +126,38 @@ useEffect(() => {
     }, 6000);
   });
 }, [pulses]);
+
+  useEffect(() => {
+  if (!mapRef.current || !pulses || pulses.length === 0) return;
+  const map = mapRef.current;
+
+  console.log('DRAW PULSES:', pulses); // ⬅️ DEBUG
+
+  pulses.forEach((p) => {
+    const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
+    const lng = typeof p.lng === 'number' ? p.lng : Number(p.lng);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      console.warn('Invalid pulse coords:', p);
+      return;
+    }
+
+    const el = document.createElement('div');
+    el.className = 'pulse-marker';
+
+    const color = EMOTION_COLORS[p.emotion] || 'rgba(255,255,255,0.9)';
+    el.style.setProperty('--pulse-color', color);
+
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    setTimeout(() => {
+      marker.remove();
+    }, 6000);
+  });
+}, [pulses]);
+
 
 
 
