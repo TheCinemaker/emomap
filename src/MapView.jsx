@@ -3,6 +3,17 @@ import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
+const EMOTION_COLORS = {
+  happy: '#22c55e',     // zöld
+  bored: '#9ca3af',     // szürke
+  stressed: '#ef4444',  // piros
+  tired: '#facc15',     // sárga
+  motivated: '#0ea5e9', // kék
+  love: '#ec4899',      // pink
+  hype: '#a855f7'       // lila
+};
+
+
 export function MapView({ coords, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -89,8 +100,6 @@ useEffect(() => {
   if (!mapRef.current || !pulses || pulses.length === 0) return;
   const map = mapRef.current;
 
-  console.log('DRAW PULSES:', pulses); // ⬅️ DEBUG
-
   pulses.forEach((p) => {
     const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
     const lng = typeof p.lng === 'number' ? p.lng : Number(p.lng);
@@ -103,15 +112,21 @@ useEffect(() => {
     const el = document.createElement('div');
     el.className = 'pulse-marker';
 
+    // emotion szín beállítása
+    const color = EMOTION_COLORS[p.emotion] || 'rgba(255,255,255,0.9)';
+    el.style.setProperty('--pulse-color', color);
+
     const marker = new maplibregl.Marker({ element: el })
       .setLngLat([lng, lat])
       .addTo(map);
 
+    // tovább éljen: ~5s animáció + kis ráhagyás
     setTimeout(() => {
       marker.remove();
-    }, 2500);
+    }, 6000);
   });
 }, [pulses]);
+
 
 
   // zoom controls
