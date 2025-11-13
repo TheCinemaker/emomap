@@ -162,7 +162,7 @@ button {
 
 /* PULSE MARKER – brutálisan látható színes gyűrű 5s-ig */
 .pulse-marker-container {
-  width: 150px;
+  width: 150px; /* A konténer mérete, amiben az animáció zajlik */
   height: 150px;
   display: flex;
   justify-content: center;
@@ -174,29 +174,29 @@ button {
   width: 40px;
   height: 40px;
   border-radius: 999px;
-  border: 4px solid var(--pulse-color, #ffffff);
+  background-color: var(--pulse-color);
+  border: 2px solid var(--pulse-color, #ffffff);
   box-shadow: 0 0 20px var(--pulse-color, #ffffff);
-  background: transparent;
-  /* Az animáció felel a transform és opacity értékekért */
-  animation: pulse-ring 5s ease-out forwards;
+  animation: pulse-ring 5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes pulse-ring {
+
   0% {
-    transform: scale(0.4);
-    opacity: 0.95;
-  }
-  30% {
-    transform: scale(1.5);
+    transform: scale(0.33);
     opacity: 0.9;
   }
-  70% {
-    transform: scale(2.7);
-    opacity: 0.6;
+    50% {
+    opacity: 0.5;
+  }
+  80% {
+    opacity: 0.1;
   }
   100% {
     transform: scale(3.5);
     opacity: 0;
+    box-shadow: none; /* A végén levesszük az árnyékot a jobb teljesítményért */
   }
 }
 
