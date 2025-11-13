@@ -159,7 +159,7 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: CYBERPUNK_STYLE, // A javított stílust használjuk
+      style: 'https://demotiles.maplibre.org/style.json', // A javított stílust használjuk
       center: [16, 47],
       zoom: 2,
       attributionControl: false
