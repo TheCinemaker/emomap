@@ -1,6 +1,7 @@
 // src/App.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { EMOTIONS } from './emotions';
+import { supabase } from './supabaseClient';
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
@@ -64,25 +65,39 @@ export default function App() {
   const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
 
   async function handleVote(emotionId) {
-    if (!canVote) return;
-    if (!coords || !userId) return;
+  if (!canVote) return;
+  if (!coords || !userId) return;
 
-    const event = {
-      userId,
-      sessionId: SESSION_ID,
-      emotion: emotionId,
-      lat: coords.lat,
-      lng: coords.lng,
-      timestamp: new Date().toISOString()
-    };
+  const event = {
+    user_id: userId,
+    session_id: SESSION_ID,
+    emotion: emotionId,
+    lat: coords.lat,
+    lng: coords.lng
+    // inserted_at-t a DB tölti automatikusan
+  };
 
-    // Later: send this to Supabase / backend
-    console.log('EVENT SENT:', event);
+  try {
+    const { data, error } = await supabase
+      .from('emotions')
+      .insert(event)
+      .select(); // visszaadja a beszúrt sort
 
-    // local debug
-    setEvents(prev => [...prev, event]);
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return;
+    }
+
+    const inserted = data?.[0];
+    console.log('EVENT STORED:', inserted || event);
+
+    // local debug state (nem kötelező, de jó látni)
+    setEvents(prev => [...prev, inserted || event]);
     setLastVoteAt(Date.now());
+  } catch (err) {
+    console.error('Unexpected insert error:', err);
   }
+}
 
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
