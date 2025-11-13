@@ -96,70 +96,44 @@ export function MapView({ coords, onBoundsChange, pulses }) {
   }, [coords]);
 
   // show pulses (new events)
-useEffect(() => {
-  if (!mapRef.current || !pulses || pulses.length === 0) return;
-  const map = mapRef.current;
-
-  pulses.forEach((p) => {
-    const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
-    const lng = typeof p.lng === 'number' ? p.lng : Number(p.lng);
-
-    if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      console.warn('Invalid pulse coords:', p);
-      return;
-    }
-
-    const el = document.createElement('div');
-    el.className = 'pulse-marker';
-
-    // emotion szín beállítása
-    const color = EMOTION_COLORS[p.emotion] || 'rgba(255,255,255,0.9)';
-    el.style.setProperty('--pulse-color', color);
-
-    const marker = new maplibregl.Marker({ element: el })
-      .setLngLat([lng, lat])
-      .addTo(map);
-
-    // tovább éljen: ~5s animáció + kis ráhagyás
-    setTimeout(() => {
-      marker.remove();
-    }, 6000);
-  });
-}, [pulses]);
-
   useEffect(() => {
-  if (!mapRef.current || !pulses || pulses.length === 0) return;
-  const map = mapRef.current;
+    if (!mapRef.current || !pulses || pulses.length === 0) return;
+    const map = mapRef.current;
 
-  console.log('DRAW PULSES:', pulses); // ⬅️ DEBUG
+    pulses.forEach((p) => {
+      const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
+      const lng = typeof p.lng === 'number' ? p.lng : Number(p.lng);
 
-  pulses.forEach((p) => {
-    const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
-    const lng = typeof p.lng === 'number' ? p.lng : Number(p.lng);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        console.warn('Invalid pulse coords:', p);
+        return;
+      }
 
-    if (Number.isNaN(lat) || Number.isNaN(lng)) {
-      console.warn('Invalid pulse coords:', p);
-      return;
-    }
+      // 1. Külső konténer a pozicionáláshoz
+      const container = document.createElement('div');
+      container.className = 'pulse-marker-container';
 
-    const el = document.createElement('div');
-    el.className = 'pulse-marker';
+      // 2. Belső elem az animációhoz
+      const el = document.createElement('div');
+      el.className = 'pulse-marker';
+      
+      container.appendChild(el);
 
-    const color = EMOTION_COLORS[p.emotion] || 'rgba(255,255,255,0.9)';
-    el.style.setProperty('--pulse-color', color);
+      // A színt a belső, animált elemen állítjuk be
+      const color = EMOTION_COLORS[p.emotion] || 'rgba(255,255,255,0.9)';
+      el.style.setProperty('--pulse-color', color);
 
-    const marker = new maplibregl.Marker({ element: el })
-      .setLngLat([lng, lat])
-      .addTo(map);
+      // A külső konténert adjuk át a Markernek
+      const marker = new maplibregl.Marker({ element: container })
+        .setLngLat([lng, lat])
+        .addTo(map);
 
-    setTimeout(() => {
-      marker.remove();
-    }, 6000);
-  });
-}, [pulses]);
-
-
-
+      // A marker eltávolítása az animáció után
+      setTimeout(() => {
+        marker.remove();
+      }, 6000);
+    });
+  }, [pulses]);
 
   // zoom controls
   function handleZoomIn() {
