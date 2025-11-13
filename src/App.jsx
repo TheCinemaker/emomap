@@ -106,7 +106,7 @@ export default function App() {
       setLastVoteAt(Date.now());
 
       // optional: instant pulse for own click
-      // setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
+      setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
     } catch (err) {
       console.error('Unexpected insert error:', err);
     }
