@@ -13,140 +13,7 @@ const EMOTION_COLORS = {
   hype: '#a855f7'       // lila
 };
 
-// Cyberpunk style – JAVÍTOTT verzió, látható földrészekkel
-const CYBERPUNK_STYLE = {
-  version: 8,
-  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
-  sources: {
-    openmaptiles: {
-      type: 'vector',
-      url: 'https://demotiles.maplibre.org/tiles/tiles.json'
-    }
-  },
-  layers: [
-    {
-      id: 'background',
-      type: 'background',
-      paint: {
-        'background-color': '#020617' // Eredeti sötét háttér marad
-      }
-    },
-    {
-      id: 'land',
-      type: 'fill',
-      source: 'openmaptiles',
-      'source-layer': 'landcover',
-      paint: {
-        // JAVÍTÁS: A föld kap egy nagyon sötét, de a háttértől eltérő színt
-        'fill-color': '#0f172a' 
-      }
-    },
-    {
-      id: 'water',
-      type: 'fill',
-      source: 'openmaptiles',
-      'source-layer': 'water',
-      paint: {
-        // JAVÍTÁS: A víz is kap egy halványan eltérő színt
-        'fill-color': '#080f23',
-        'fill-outline-color': '#0ea5e9'
-      }
-    },
-    {
-      id: 'boundary-country',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      filter: ['==', 'admin_level', 2],
-      paint: {
-        'line-color': '#22d3ee',
-        'line-width': 1.2,
-        // JAVÍTÁS: Picit jobban látható
-        'line-opacity': 0.5
-      }
-    },
-    {
-      id: 'boundary-region',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'boundary',
-      filter: ['>', 'admin_level', 2],
-      paint: {
-        'line-color': '#4f46e5',
-        'line-width': 0.6,
-        'line-opacity': 0.3
-      }
-    },
-    {
-      id: 'roads-motorway',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'transportation',
-      filter: ['==', 'class', 'motorway'],
-      paint: {
-        'line-color': '#a855f7',
-        'line-width': 2.4,
-        'line-opacity': 0.9
-        // JAVÍTÁS: 'line-glow-color' nem létező tulajdonság, törölve
-      }
-    },
-    {
-      id: 'roads-primary',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'transportation',
-      filter: ['==', 'class', 'primary'],
-      paint: {
-        'line-color': '#22c55e',
-        'line-width': 1.8,
-        'line-opacity': 0.85
-      }
-    },
-    {
-      id: 'roads-secondary',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'transportation',
-      filter: ['in', 'class', 'secondary', 'tertiary'],
-      paint: {
-        'line-color': '#38bdf8',
-        'line-width': 1.2,
-        'line-opacity': 0.7
-      }
-    },
-    {
-      id: 'roads-other',
-      type: 'line',
-      source: 'openmaptiles',
-      'source-layer': 'transportation',
-      filter: ['in', 'class', 'residential', 'service', 'unclassified'],
-      paint: {
-        // JAVÍTÁS: Ez a szín túl sötét volt, láthatatlan lett volna
-        'line-color': '#334155', 
-        'line-width': 0.4,
-        'line-opacity': 0.7
-      }
-    },
-    {
-      id: 'places',
-      type: 'symbol',
-      source: 'openmaptiles',
-      'source-layer': 'place',
-      minzoom: 3,
-      layout: {
-        'text-field': ['get', 'name'],
-        'text-size': 10,
-        'text-font': ['Open Sans Semibold']
-      },
-      paint: {
-        'text-color': '#e5e7eb',
-        'text-halo-color': '#020617',
-        'text-halo-width': 1.2
-      }
-    }
-  ]
-};
-
+// A felesleges, egyedi stílus objektumot eltávolítottuk.
 
 export function MapView({ coords, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
@@ -159,7 +26,9 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: 'https://demotiles.maplibre.org/style.json', // A javított stílust használjuk
+      // JAVÍTÁS: Egy profi, részletgazdag sötét térképstílust használunk.
+      // Ez tartalmaz városokat, utakat, címkéket, mindent, amit egy normális térképtől elvársz.
+      style: 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json',
       center: [16, 47],
       zoom: 2,
       attributionControl: false
