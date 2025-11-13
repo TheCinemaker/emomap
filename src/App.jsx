@@ -125,7 +125,7 @@ export default function App() {
       <main className="app-main">
         <div className="map-wrapper">
           <MapView
-            coords={coords ? { lat: coords.lat, lng: coords.lng } : null}
+            coords={coords}     
             onBoundsChange={setMapBounds}
             pulses={pulseBatch}
           />
