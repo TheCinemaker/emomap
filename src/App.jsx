@@ -162,6 +162,7 @@ export default function App() {
       : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
   </div>
 </div>
+          </div>
 
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
