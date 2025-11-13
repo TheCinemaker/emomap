@@ -128,6 +128,25 @@ button {
   inset: 0;
 }
 
+.app-main {
+  flex: 1;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-wrapper {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.map-container {
+  position: absolute;
+  inset: 0;
+}
+
+/* status overlay, már megvan nálad */
 .status-overlay {
   position: absolute;
   left: 8px;
@@ -139,20 +158,64 @@ button {
   backdrop-filter: blur(6px);
 }
 
-/* pulse marker animáció */
-
+/* pulse marker – erősebb, nagyobb, hogy biztos lásd */
 .pulse-marker {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 1) 0%,
     rgba(255, 255, 255, 0) 70%
   );
   transform: scale(0.2);
   opacity: 1;
   animation: pulse-out 2s ease-out forwards;
+}
+
+@keyframes pulse-out {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+/* user location marker – fix "you are here" pötty */
+
+.user-marker {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #24a0ff;
+  box-shadow: 0 0 0 4px rgba(36, 160, 255, 0.5);
+}
+
+/* zoom controls */
+
+.map-zoom-controls {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 5;
+}
+
+.map-zoom-controls button {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 @keyframes pulse-out {
