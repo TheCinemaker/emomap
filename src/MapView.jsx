@@ -13,6 +13,135 @@ const EMOTION_COLORS = {
   hype: '#a855f7'       // lila
 };
 
+// Cyberpunk style – sötét, neon vonalakkal
+const CYBERPUNK_STYLE = {
+  version: 8,
+  glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
+  sources: {
+    openmaptiles: {
+      type: 'vector',
+      url: 'https://demotiles.maplibre.org/tiles/tiles.json'
+    }
+  },
+  layers: [
+    {
+      id: 'background',
+      type: 'background',
+      paint: {
+        'background-color': '#020617' // majdnem fekete
+      }
+    },
+    {
+      id: 'land',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      paint: {
+        'fill-color': '#020617'
+      }
+    },
+    {
+      id: 'water',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'water',
+      paint: {
+        'fill-color': '#020617',
+        'fill-outline-color': '#0ea5e9'
+      }
+    },
+    {
+      id: 'boundary-country',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      filter: ['==', 'admin_level', 2],
+      paint: {
+        'line-color': '#22d3ee',
+        'line-width': 1.2,
+        'line-opacity': 0.4
+      }
+    },
+    {
+      id: 'boundary-region',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'boundary',
+      filter: ['>', 'admin_level', 2],
+      paint: {
+        'line-color': '#4f46e5',
+        'line-width': 0.6,
+        'line-opacity': 0.25
+      }
+    },
+    {
+      id: 'roads-motorway',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      filter: ['==', 'class', 'motorway'],
+      paint: {
+        'line-color': '#a855f7',
+        'line-width': 2.4,
+        'line-opacity': 0.9
+      }
+    },
+    {
+      id: 'roads-primary',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      filter: ['==', 'class', 'primary'],
+      paint: {
+        'line-color': '#22c55e',
+        'line-width': 1.8,
+        'line-opacity': 0.85
+      }
+    },
+    {
+      id: 'roads-secondary',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      filter: ['in', 'class', 'secondary', 'tertiary'],
+      paint: {
+        'line-color': '#38bdf8',
+        'line-width': 1.2,
+        'line-opacity': 0.7
+      }
+    },
+    {
+      id: 'roads-other',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'transportation',
+      filter: ['in', 'class', 'residential', 'service', 'unclassified'],
+      paint: {
+        'line-color': '#1f2937',
+        'line-width': 0.4,
+        'line-opacity': 0.7
+      }
+    },
+    {
+      id: 'places',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'place',
+      minzoom: 3,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 10,
+        'text-font': ['Open Sans Semibold']
+      },
+      paint: {
+        'text-color': '#e5e7eb',
+        'text-halo-color': '#020617',
+        'text-halo-width': 1.2
+      }
+    }
+  ]
+};
+
 
 export function MapView({ coords, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
@@ -25,7 +154,7 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: 'https://demotiles.maplibre.org/style.json',
+      style: CYBERPUNK_STYLE, // <-- ITT TÖRTÉNT A CSERE
       center: [16, 47],
       zoom: 2,
       attributionControl: false
@@ -36,19 +165,7 @@ export function MapView({ coords, onBoundsChange, pulses }) {
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
 
-   map.on('moveend', () => {
-  const b = map.getBounds();
-  const bounds = {
-    north: b.getNorth(),
-    south: b.getSouth(),
-    east: b.getEast(),
-    west: b.getWest()
-  };
-  onBoundsChange?.(bounds);
-});
-
-
-    map.on('load', () => {
+    const emitBounds = () => {
       const b = map.getBounds();
       const bounds = {
         north: b.getNorth(),
@@ -57,7 +174,10 @@ export function MapView({ coords, onBoundsChange, pulses }) {
         west: b.getWest()
       };
       onBoundsChange?.(bounds);
-    });
+    };
+
+    map.on('moveend', emitBounds);
+    map.on('load', emitBounds);
 
     mapRef.current = map;
 
@@ -69,14 +189,14 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
   // center map on user coords
   useEffect(() => {
-  if (!coords || !mapRef.current) return;
-  mapRef.current.flyTo({
-    center: [coords.lng, coords.lat],
-    zoom: 10,
-    speed: 0.9
-  });
-}, [coords?.lat, coords?.lng]);
-  
+    if (!coords || !mapRef.current) return;
+    mapRef.current.flyTo({
+      center: [coords.lng, coords.lat],
+      zoom: 10,
+      speed: 0.9
+    });
+  }, [coords?.lat, coords?.lng]);
+
   // show user position as a blue dot
   useEffect(() => {
     const map = mapRef.current;
@@ -109,26 +229,22 @@ export function MapView({ coords, onBoundsChange, pulses }) {
         return;
       }
 
-      // 1. Külső konténer a pozicionáláshoz
+      // Külső konténer a pozicionáláshoz
       const container = document.createElement('div');
       container.className = 'pulse-marker-container';
 
-      // 2. Belső elem az animációhoz
+      // Belső elem az animációhoz
       const el = document.createElement('div');
       el.className = 'pulse-marker';
-      
       container.appendChild(el);
 
-      // A színt a belső, animált elemen állítjuk be
       const color = EMOTION_COLORS[p.emotion] || 'rgba(255,255,255,0.9)';
       el.style.setProperty('--pulse-color', color);
 
-      // A külső konténert adjuk át a Markernek
       const marker = new maplibregl.Marker({ element: container })
         .setLngLat([lng, lat])
         .addTo(map);
 
-      // A marker eltávolítása az animáció után
       setTimeout(() => {
         marker.remove();
       }, 6000);
