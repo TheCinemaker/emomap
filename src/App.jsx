@@ -32,9 +32,14 @@ export default function App() {
   const [pulseBatch, setPulseBatch] = useState([]); // latest pulses for the map
 
   // Polling for new events inside current bounds
-  useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
-    setPulseBatch(batch);
+  useEmotionsPolling(mapBounds, SESSION_ID, (events) => {
+  // events: új batch a DB-ből
+  setPulseBatch((prev) => {
+    const merged = [...prev, ...events];
+    // opcionálisan limitáljuk az utolsó N-re, pl. 100
+    return merged.slice(-100);
   });
+});
 
   // init userId
   useEffect(() => {
@@ -75,42 +80,43 @@ export default function App() {
   const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
 
   async function handleVote(emotionId) {
-    if (!canVote) return;
-    if (!coords || !userId) return;
+  if (!canVote) return;
+  if (!coords || !userId) return;
 
-    const event = {
-      user_id: userId,
-      session_id: SESSION_ID,
-      emotion: emotionId,
-      lat: coords.lat,
-      lng: coords.lng // ⬅️ itt kellett a vessző!
-      // inserted_at is handled by DB
-    };
+  const event = {
+    user_id: userId,
+    session_id: SESSION_ID,
+    emotion: emotionId,
+    lat: coords.lat,
+    lng: coords.lng
+  };
 
-    try {
-      const { data, error } = await supabase
-        .from('emotions')
-        .insert(event)
-        .select(); // returns inserted row
+  try {
+    const { data, error } = await supabase
+      .from('emotions')
+      .insert(event)
+      .select();
 
-      if (error) {
-        console.error('Supabase insert error:', error);
-        return;
-      }
-
-      const inserted = data?.[0];
-      console.log('EVENT STORED:', inserted || event);
-
-      // local debug
-      setEvents((prev) => [...prev, inserted || event]);
-      setLastVoteAt(Date.now());
-
-      // optional: instant pulse for own click
-      // setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
-    } catch (err) {
-      console.error('Unexpected insert error:', err);
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return;
     }
+
+    const inserted = data?.[0];
+    console.log('EVENT STORED:', inserted || event);
+
+    setEvents((prev) => [...prev, inserted || event]);
+    setLastVoteAt(Date.now());
+
+    // instant pulse
+    setPulseBatch((prev) =>
+      [...prev, { ...(inserted || event), lat: coords.lat, lng: coords.lng }].slice(-100)
+    );
+  } catch (err) {
+    console.error('Unexpected insert error:', err);
   }
+}
+
 
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
