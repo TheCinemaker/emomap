@@ -1,179 +1,126 @@
-// src/App.jsx
-import React, { useEffect, useMemo, useState } from 'react';
-import { EMOTIONS } from './emotions';
-import { supabase } from './supabaseClient';
-import { MapView } from './MapView';
-import { useEmotionsPolling } from './useEmotionsPolling';
+// src/MapView.jsx
+import React, { useEffect, useRef } from 'react';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
-const SESSION_ID = 'global';
-const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
+export function MapView({ coords, onBoundsChange, pulses }) {
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const userMarkerRef = useRef(null);
 
-function getOrCreateUserId() {
-  if (typeof window === 'undefined') return null;
-  const key = 'emotionglobe_user_id';
-  let id = window.localStorage.getItem(key);
-  if (!id) {
-    id =
-      crypto.randomUUID?.() ??
-      `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    window.localStorage.setItem(key, id);
-  }
-  return id;
-}
-
-export default function App() {
-  const [userId, setUserId] = useState(null);
-  const [gpsAllowed, setGpsAllowed] = useState(null); // null = unknown, true/false
-  const [coords, setCoords] = useState(null); // { lat, lng }
-  const [lastVoteAt, setLastVoteAt] = useState(null);
-  const [events, setEvents] = useState([]); // local debug only
-
-  const [mapBounds, setMapBounds] = useState(null);
-  const [pulseBatch, setPulseBatch] = useState([]); // latest pulses for the map
-
-  // Polling for new events inside current bounds
-  useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
-    setPulseBatch(batch);
-  });
-
-  // init userId
+  // Init map once
   useEffect(() => {
-    const id = getOrCreateUserId();
-    setUserId(id);
-  }, []);
+    if (!mapContainerRef.current || mapRef.current) return;
 
-  // ask for GPS on load
-  useEffect(() => {
-    if (!('geolocation' in navigator)) {
-      setGpsAllowed(false);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = Math.round(pos.coords.latitude * 1000) / 1000;
-        const lng = Math.round(pos.coords.longitude * 1000) / 1000;
-        setCoords({ lat, lng });
-        setGpsAllowed(true);
-      },
-      (err) => {
-        console.error('GPS error:', err);
-        setGpsAllowed(false);
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 8000
-      }
-    );
-  }, []);
+    const map = new maplibregl.Map({
+      container: mapContainerRef.current,
+      style: 'https://demotiles.maplibre.org/style.json',
+      center: [16, 47],
+      zoom: 2,
+      attributionControl: false
+    });
 
-  // how much time since last vote
-  const msSinceLastVote = useMemo(() => {
-    if (!lastVoteAt) return Infinity;
-    return Date.now() - lastVoteAt;
-  }, [lastVoteAt]);
+    // enable interactions
+    map.dragPan.enable();
+    map.scrollZoom.enable();
+    map.touchZoomRotate.enable();
 
-  const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
+    map.on('moveend', () => {
+      const b = map.getBounds();
+      const bounds = {
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getSouth() > b.getNorth() ? b.getSouth() : b.getSouth(), // (optional fix later, most important az alap)
+        east: b.getEast(),
+        west: b.getWest()
+      };
+      onBoundsChange?.(bounds);
+    });
 
-  async function handleVote(emotionId) {
-    if (!canVote) return;
-    if (!coords || !userId) return;
+    map.on('load', () => {
+      const b = map.getBounds();
+      const bounds = {
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        west: b.getWest()
+      };
+      onBoundsChange?.(bounds);
+    });
 
-    const event = {
-      user_id: userId,
-      session_id: SESSION_ID,
-      emotion: emotionId,
-      lat: coords.lat,
-      lng: coords.lng // ⬅️ itt kellett a vessző!
-      // inserted_at is handled by DB
+    mapRef.current = map;
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
     };
+  }, [onBoundsChange]);
 
-    try {
-      const { data, error } = await supabase
-        .from('emotions')
-        .insert(event)
-        .select(); // returns inserted row
+  // center map on user coords
+  useEffect(() => {
+    if (!coords || !mapRef.current) return;
+    mapRef.current.flyTo({
+      center: [coords.lng, coords.lat],
+      zoom: 10,
+      speed: 0.9
+    });
+  }, [coords]);
 
-      if (error) {
-        console.error('Supabase insert error:', error);
-        return;
-      }
+  // show user position as a blue dot
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !coords) return;
 
-      const inserted = data?.[0];
-      console.log('EVENT STORED:', inserted || event);
-
-      // local debug
-      setEvents((prev) => [...prev, inserted || event]);
-      setLastVoteAt(Date.now());
-
-      // optional: instant pulse for own click
-      // setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
-    } catch (err) {
-      console.error('Unexpected insert error:', err);
+    if (!userMarkerRef.current) {
+      const el = document.createElement('div');
+      el.className = 'user-marker';
+      userMarkerRef.current = new maplibregl.Marker({
+        element: el
+      })
+        .setLngLat([coords.lng, coords.lat])
+        .addTo(map);
+    } else {
+      userMarkerRef.current.setLngLat([coords.lng, coords.lat]);
     }
-  }
+  }, [coords]);
 
-  const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
-  const remainingSec = Math.ceil(remainingMs / 1000);
+  // show pulses (new events)
+  useEffect(() => {
+    if (!mapRef.current || !pulses || pulses.length === 0) return;
+    const map = mapRef.current;
+
+    pulses.forEach((p) => {
+      if (typeof p.lng !== 'number' || typeof p.lat !== 'number') return;
+
+      const el = document.createElement('div');
+      el.className = 'pulse-marker';
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([p.lng, p.lat])
+        .addTo(map);
+
+      setTimeout(() => {
+        marker.remove();
+      }, 2500);
+    });
+  }, [pulses]);
+
+  // zoom controls
+  function handleZoomIn() {
+    if (!mapRef.current) return;
+    mapRef.current.zoomIn();
+  }
+  function handleZoomOut() {
+    if (!mapRef.current) return;
+    mapRef.current.zoomOut();
+  }
 
   return (
-    <div className="app-root">
-      <header className="app-header">
-        <div className="app-title">EmoMap – Heatmap of Emotions</div>
-        <div className="app-session">session: {SESSION_ID}</div>
-      </header>
-
-      <main className="app-main">
-        <div className="map-wrapper">
-          <MapView
-            coords={coords ? { lat: coords.lat, lng: coords.lng } : null}
-            onBoundsChange={setMapBounds}
-            pulses={pulseBatch}
-          />
-          <div className="status-overlay">
-            <div>
-              <strong>User:</strong> {userId || 'loading...'}
-            </div>
-            <div>
-              <strong>Location:</strong>{' '}
-              {gpsAllowed === null
-                ? 'requesting...'
-                : gpsAllowed
-                ? `${coords?.lat}, ${coords?.lng}`
-                : 'denied'}
-            </div>
-            <div>
-              <strong>Vote:</strong>{' '}
-              {gpsAllowed !== true
-                ? 'enable location'
-                : canVote
-                ? 'you can vote now'
-                : `wait ${remainingSec}s`}
-            </div>
-          </div>
-        </div>
-
-        <div className="app-footer">
-          <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
-            Select how you feel. You can send one pulse every 2 minutes from your
-            current location.
-          </p>
-          <div className="emotion-buttons">
-            {EMOTIONS.map((e) => (
-              <button
-                key={e.id}
-                className={
-                  'emotion-button' +
-                  (!canVote || !coords || !userId ? ' disabled' : '')
-                }
-                onClick={() => handleVote(e.id)}
-              >
-                <span className="emoji">{e.label}</span>
-                <span className="label">{e.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </main>
+    <div className="map-container" ref={mapContainerRef}>
+      <div className="map-zoom-controls">
+        <button onClick={handleZoomIn}>+</button>
+        <button onClick={handleZoomOut}>−</button>
+      </div>
     </div>
   );
 }
