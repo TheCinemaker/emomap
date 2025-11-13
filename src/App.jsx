@@ -4,9 +4,12 @@ import { EMOTIONS } from './emotions';
 import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
+import { useEmotionsStats } from './useEmotionsStats';
+
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
+const stats = useEmotionsStats(mapBounds, SESSION_ID);
 
 function getOrCreateUserId() {
   if (typeof window === 'undefined') return null;
@@ -133,27 +136,32 @@ export default function App() {
             pulses={pulseBatch}
           />
           <div className="status-overlay">
-            <div>
-              <strong>User:</strong> {userId || 'loading...'}
-            </div>
-            <div>
-              <strong>Location:</strong>{' '}
-              {gpsAllowed === null
-                ? 'requesting...'
-                : gpsAllowed
-                ? `${coords?.lat}, ${coords?.lng}`
-                : 'denied'}
-            </div>
-            <div>
-              <strong>Vote:</strong>{' '}
-              {gpsAllowed !== true
-                ? 'enable location'
-                : canVote
-                ? 'you can vote now'
-                : `wait ${remainingSec}s`}
-            </div>
-          </div>
-        </div>
+  <div>
+    <strong>User:</strong> {userId || 'loading...'}
+  </div>
+  <div>
+    <strong>Location:</strong>{' '}
+    {gpsAllowed === null
+      ? 'requesting...'
+      : gpsAllowed
+      ? `${coords?.lat}, ${coords?.lng}`
+      : 'denied'}
+  </div>
+  <div>
+    <strong>Vote:</strong>{' '}
+    {gpsAllowed !== true
+      ? 'enable location'
+      : canVote
+      ? 'you can vote now'
+      : `wait ${remainingSec}s`}
+  </div>
+  <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
+    <strong>Area:</strong>{' '}
+    {stats.loading
+      ? 'loading...'
+      : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
+  </div>
+</div>
 
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
