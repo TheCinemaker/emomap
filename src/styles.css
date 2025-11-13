@@ -158,22 +158,36 @@ button {
   backdrop-filter: blur(6px);
 }
 
-/* pulse marker – erősebb, nagyobb, hogy biztos lásd */
+/* PULSE MARKER – 5s colorful pulse */
+
 .pulse-marker {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border-radius: 999px;
-  background: red;
-  opacity: 0.8;
+  /* szín CSS változóból jön, MapView állítja be */
+  background: radial-gradient(
+    circle,
+    var(--pulse-color, rgba(255, 255, 255, 1)) 0%,
+    rgba(255, 255, 255, 0.1) 40%,
+    rgba(255, 255, 255, 0) 70%
+  );
+  box-shadow: 0 0 18px var(--pulse-color, rgba(255, 255, 255, 0.8));
+  transform: scale(0.3);
+  opacity: 0.9;
+  animation: pulse-ring 5s ease-out forwards;
 }
 
-@keyframes pulse-out {
+@keyframes pulse-ring {
   0% {
-    transform: scale(0.2);
-    opacity: 1;
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  40% {
+    transform: scale(1.4);
+    opacity: 0.7;
   }
   100% {
-    transform: scale(2.8);
+    transform: scale(3.2);
     opacity: 0;
   }
 }
@@ -210,15 +224,4 @@ button {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
-}
-
-@keyframes pulse-out {
-  0% {
-    transform: scale(0.2);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
 }
