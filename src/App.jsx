@@ -23,32 +23,42 @@ function getOrCreateUserId() {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
-  const [gpsAllowed, setGpsAllowed] = useState(null); // null = unknown, true/false
-  const [coords, setCoords] = useState(null); // { lat, lng }
+  const [gpsAllowed, setGpsAllowed] = useState(null);
+  const [coords, setCoords] = useState(null);
   const [lastVoteAt, setLastVoteAt] = useState(null);
-  const [events, setEvents] = useState([]); // local debug only
+  const [events, setEvents] = useState([]);
 
   const [mapBounds, setMapBounds] = useState(null);
-  const [pulseBatch, setPulseBatch] = useState([]); // latest pulses for the map
+  const [pulseBatch, setPulseBatch] = useState([]);
 
-  // JAVÍTÁS: A hook hívás a komponensen belülre került.
+  // ÚJ RÉSZ: A MŰKÖDŐ VISSZASZÁMLÁLÓHOZ
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+  // ÚJ RÉSZ VÉGE
+
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
 
-  // Polling for new events inside current bounds
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
       const merged = [...prev, ...batch];
-      return merged.slice(-100); // csak az utolsó ~100 pulzust tartjuk
+      return merged.slice(-100);
     });
   });
 
-  // init userId
   useEffect(() => {
     const id = getOrCreateUserId();
     setUserId(id);
   }, []);
 
-  // ask for GPS on load
   useEffect(() => {
     if (!('geolocation' in navigator)) {
       setGpsAllowed(false);
@@ -72,11 +82,12 @@ export default function App() {
     );
   }, []);
 
-  // how much time since last vote
+  // MÓDOSÍTOTT RÉSZ: A 'now'-t használja a számításhoz
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
-    return Date.now() - lastVoteAt;
-  }, [lastVoteAt]);
+    return now - lastVoteAt;
+  }, [lastVoteAt, now]);
+  // MÓDOSÍTOTT RÉSZ VÉGE
 
   const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
 
@@ -90,14 +101,13 @@ export default function App() {
       emotion: emotionId,
       lat: coords.lat,
       lng: coords.lng
-      // inserted_at is handled by DB
     };
 
     try {
       const { data, error } = await supabase
         .from('emotions')
         .insert(event)
-        .select(); // returns inserted row
+        .select();
 
       if (error) {
         console.error('Supabase insert error:', error);
@@ -107,11 +117,9 @@ export default function App() {
       const inserted = data?.[0];
       console.log('EVENT STORED:', inserted || event);
 
-      // local debug
       setEvents((prev) => [...prev, inserted || event]);
       setLastVoteAt(Date.now());
 
-      // optional: instant pulse for own click
       setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
     } catch (err) {
       console.error('Unexpected insert error:', err);
@@ -162,7 +170,7 @@ export default function App() {
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
             </div>
           </div>
-        </div> {/* JAVÍTÁS: Ez a hiányzó lezáró tag. */}
+        </div>
 
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
