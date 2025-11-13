@@ -85,25 +85,34 @@ export function MapView({ coords, onBoundsChange, pulses }) {
   }, [coords]);
 
   // show pulses (new events)
-  useEffect(() => {
-    if (!mapRef.current || !pulses || pulses.length === 0) return;
-    const map = mapRef.current;
+useEffect(() => {
+  if (!mapRef.current || !pulses || pulses.length === 0) return;
+  const map = mapRef.current;
 
-    pulses.forEach((p) => {
-      if (typeof p.lng !== 'number' || typeof p.lat !== 'number') return;
+  console.log('DRAW PULSES:', pulses); // ⬅️ DEBUG
 
-      const el = document.createElement('div');
-      el.className = 'pulse-marker';
+  pulses.forEach((p) => {
+    const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
+    const lng = typeof p.lng === 'number' ? p.lng : Number(p.lng);
 
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([p.lng, p.lat])
-        .addTo(map);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      console.warn('Invalid pulse coords:', p);
+      return;
+    }
 
-      setTimeout(() => {
-        marker.remove();
-      }, 2500);
-    });
-  }, [pulses]);
+    const el = document.createElement('div');
+    el.className = 'pulse-marker';
+
+    const marker = new maplibregl.Marker({ element: el })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    setTimeout(() => {
+      marker.remove();
+    }, 2500);
+  });
+}, [pulses]);
+
 
   // zoom controls
   function handleZoomIn() {
