@@ -58,14 +58,14 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
   // center map on user coords
   useEffect(() => {
-    if (!coords || !mapRef.current) return;
-    mapRef.current.flyTo({
-      center: [coords.lng, coords.lat],
-      zoom: 10,
-      speed: 0.9
-    });
-  }, [coords]);
-
+  if (!coords || !mapRef.current) return;
+  mapRef.current.flyTo({
+    center: [coords.lng, coords.lat],
+    zoom: 10,
+    speed: 0.9
+  });
+}, [coords?.lat, coords?.lng]);
+  
   // show user position as a blue dot
   useEffect(() => {
     const map = mapRef.current;
