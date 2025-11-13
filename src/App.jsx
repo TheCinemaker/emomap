@@ -32,9 +32,12 @@ export default function App() {
   const [pulseBatch, setPulseBatch] = useState([]); // latest pulses for the map
 
   // Polling for new events inside current bounds
-  useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
-    setPulseBatch(batch);
+ useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
+  setPulseBatch((prev) => {
+    const merged = [...prev, ...batch];
+    return merged.slice(-100); // csak az utolsó ~100 pulzust tartjuk
   });
+});
 
   // init userId
   useEffect(() => {
