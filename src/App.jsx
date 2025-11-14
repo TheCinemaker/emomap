@@ -373,19 +373,22 @@ export default function App() {
           <div className="emotion-buttons">
             {EMOTIONS.map((e) => (
               <button
-                key={e.id}
-                className={
-                  `emotion-button ${
-                    !canVote || !coords || !userId ? 'disabled' : ''
-                  } ${
-                    lastVotedEmotion === e.id ? 'voted' : ''
-                  }`
-                }
-                onClick={() => handleVote(e.id)}
-              >
-                <span className="emoji">{e.label}</span>
-                <span className="label">{e.name}</span>
-              </button>
+  key={e.id}
+  className={
+    `emotion-button ${
+      !canVote || !coords || !userId ? 'disabled' : ''
+    } ${
+      lastVotedEmotion === e.id ? 'voted' : ''
+    }`
+  }
+  onClick={() => handleVote(e.id)}
+  style={{
+    '--emotion-color': e.color
+  }}
+>
+  <span className="emoji">{e.label}</span>
+  <span className="label">{e.name}</span>
+</button>
             ))}
           </div>
         </div>
