@@ -8,7 +8,7 @@ import { useEmotionsStats } from './useEmotionsStats';
 import { useMoodGrid } from './useMoodGrid';
 
 const SESSION_ID = 'global';
-const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
+const RATE_LIMIT_MS = 2 * 60 * 100; // 2 minutes
 
 function getOrCreateUserId() {
   if (typeof window === 'undefined') return null;
@@ -40,6 +40,10 @@ export default function App() {
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
+
+  const DEV_MODE =
+  typeof window !== 'undefined' &&
+  window.location.search.includes('dev=1');
 
   // timer a visszaszámlálóhoz
   useEffect(() => {
@@ -97,50 +101,59 @@ export default function App() {
     return now - lastVoteAt;
   }, [lastVoteAt, now]);
 
-  const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
+const canVote =
+  (DEV_MODE || gpsAllowed === true) &&
+  msSinceLastVote >= RATE_LIMIT_MS;
 
   // csak a SAJÁT GPS-helyről lehet szavazni – coords mindig GPS
   async function handleVote(emotionId) {
-    if (!canVote) return;
-    if (!coords || !userId) return;
+  if (!canVote) return;
+  if (!userId) return;
 
-    const event = {
-      user_id: userId,
-      session_id: SESSION_ID,
-      emotion: emotionId,
-      lat: coords.lat,
-      lng: coords.lng
-    };
+  // 🔧 DEV: ha dev módban vagyunk és van viewCenter, oda „szavazunk”
+  const votePoint =
+    DEV_MODE && viewCenter
+      ? { lat: viewCenter.lat, lng: viewCenter.lng }
+      : coords;
 
-    try {
-      const { data, error } = await supabase
-        .from('emotions')
-        .insert(event)
-        .select();
+  if (!votePoint) return;
 
-      if (error) {
-        console.error('Supabase insert error:', error);
-        return;
-      }
+  const event = {
+    user_id: userId,
+    session_id: SESSION_ID,
+    emotion: emotionId,
+    lat: votePoint.lat,
+    lng: votePoint.lng
+  };
 
-      const inserted = data?.[0];
-      console.log('EVENT STORED:', inserted || event);
+  try {
+    const { data, error } = await supabase
+      .from('emotions')
+      .insert(event)
+      .select();
 
-      setEvents((prev) => [...prev, inserted || event]);
-      setLastVoteAt(Date.now());
-
-      // rövid gomb-highlight
-      setLastVotedEmotion(emotionId);
-      setTimeout(() => setLastVotedEmotion(null), 1000);
-
-      // instant pulse a saját helyen
-      setPulseBatch([
-        inserted || { ...event, lat: coords.lat, lng: coords.lng }
-      ]);
-    } catch (err) {
-      console.error('Unexpected insert error:', err);
+    if (error) {
+      console.error('Supabase insert error:', error);
+      return;
     }
+
+    const inserted = data?.[0];
+    console.log('EVENT STORED:', inserted || event);
+
+    setEvents((prev) => [...prev, inserted || event]);
+    setLastVoteAt(Date.now());
+
+    setLastVotedEmotion(emotionId);
+    setTimeout(() => setLastVotedEmotion(null), 1000);
+
+    setPulseBatch([
+      inserted || { ...event, lat: votePoint.lat, lng: votePoint.lng }
+    ]);
+  } catch (err) {
+    console.error('Unexpected insert error:', err);
   }
+}
+
 
   async function handleCitySearch(e) {
     e.preventDefault();
