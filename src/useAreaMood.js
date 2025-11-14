@@ -24,7 +24,7 @@ function hexToRgb(hex) {
 
 /**
  * bounds + sessionId alapján:
- *  - lekéri az utolsó 1 óra eseményeit (max 1000)
+ *  - lekéri az adott terület ÖSSZES eseményét (max 1000)
  *  - emotion count
  *  - súlyozott átlag szín + intenzitás
  */
@@ -38,41 +38,28 @@ export function useAreaMood(bounds, sessionId) {
   });
 
   useEffect(() => {
-    if (!bounds) {
-      // Ha nincs bounds, reseteljük a mood-ot
-      setMood({
-        color: null,
-        intensity: 0,
-        total: 0,
-        loading: false,
-        error: null
-      });
-      return;
-    }
-    
+    if (!bounds) return;
     let cancelled = false;
 
     async function fetchMood() {
       setMood(prev => ({ ...prev, loading: true, error: null }));
 
-      const now = new Date();
-      const hourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+      console.log('[AreaMood] bounds:', bounds);
 
       const { data, error } = await supabase
         .from('emotions')
-        .select('emotion, inserted_at')
+        .select('emotion, lat, lng')
         .eq('session_id', sessionId)
         .gte('lat', bounds.south)
         .lte('lat', bounds.north)
         .gte('lng', bounds.west)
         .lte('lng', bounds.east)
-        .gte('inserted_at', hourAgo)
-        .limit(1000);
+        .limit(1000); // MVP
 
       if (cancelled) return;
 
       if (error) {
-        console.error('Area mood error:', error);
+        console.error('[AreaMood] error:', error);
         setMood(prev => ({
           ...prev,
           loading: false,
@@ -81,8 +68,10 @@ export function useAreaMood(bounds, sessionId) {
         return;
       }
 
+      console.log('[AreaMood] rows:', data?.length);
+
       const counts = {};
-      for (const row of data) {
+      for (const row of data || []) {
         if (!row.emotion) continue;
         counts[row.emotion] = (counts[row.emotion] || 0) + 1;
       }
@@ -118,6 +107,8 @@ export function useAreaMood(bounds, sessionId) {
       // intenzitás 0..1 (kb. 30 pulse ~ max glow)
       const intensity = Math.min(1, total / 30);
 
+      console.log('[AreaMood] mood:', { color, total, intensity });
+
       setMood({
         color,
         intensity,
@@ -128,7 +119,7 @@ export function useAreaMood(bounds, sessionId) {
     }
 
     fetchMood();
-    const id = setInterval(fetchMood, 15000);
+    const id = setInterval(fetchMood, 15000); // 15 mp-enként frissítünk
 
     return () => {
       cancelled = true;
@@ -137,5 +128,4 @@ export function useAreaMood(bounds, sessionId) {
   }, [bounds, sessionId]);
 
   return mood;
-
 }
