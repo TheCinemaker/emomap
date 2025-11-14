@@ -30,6 +30,11 @@ export default function App() {
 
   const [mapBounds, setMapBounds] = useState(null);
   const [pulseBatch, setPulseBatch] = useState([]);
+  const [viewCenter, setViewCenter] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
   // ÚJ RÉSZ: A MŰKÖDŐ VISSZASZÁMLÁLÓHOZ
   const [now, setNow] = useState(Date.now());
@@ -126,6 +131,56 @@ export default function App() {
     }
   }
 
+async function handleCitySearch(e) {
+  e.preventDefault();
+  const q = searchTerm.trim();
+  if (!q) return;
+
+  setSearchLoading(true);
+  setSearchError(null);
+
+  try {
+    const url =
+      'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
+      encodeURIComponent(q);
+
+    const res = await fetch(url, {
+      headers: {
+        // Nominatim elvár valami user-agent / referer jellegű udvariasságot
+        'Accept-Language': 'en'
+      }
+    });
+
+    if (!res.ok) throw new Error('Search failed: ' + res.status);
+    const data = await res.json();
+
+    if (!data || !data.length) {
+      setSearchError('No results');
+      setSearchLoading(false);
+      return;
+    }
+
+    const place = data[0];
+    const lat = parseFloat(place.lat);
+    const lng = parseFloat(place.lon);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      setSearchError('Invalid coordinates');
+      setSearchLoading(false);
+      return;
+    }
+
+    // set view center – MapView innen tudja, hova flyTo-zzon
+    setViewCenter({ lat, lng, zoom: 11 });
+    setSearchLoading(false);
+  } catch (err) {
+    console.error('City search error:', err);
+    setSearchError('Search error');
+    setSearchLoading(false);
+  }
+}
+
+
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
@@ -140,37 +195,77 @@ export default function App() {
         <div className="map-wrapper">
           <MapView
             coords={coords}
+            viewCenter={viewCenter}
             onBoundsChange={setMapBounds}
             pulses={pulseBatch}
           />
           <div className="status-overlay">
-            <div>
-              <strong>User:</strong> {userId || 'loading...'}
-            </div>
-            <div>
-              <strong>Location:</strong>{' '}
-              {gpsAllowed === null
-                ? 'requesting...'
-                : gpsAllowed
-                ? `${coords?.lat}, ${coords?.lng}`
-                : 'denied'}
-            </div>
-            <div>
-              <strong>Vote:</strong>{' '}
-              {gpsAllowed !== true
-                ? 'enable location'
-                : canVote
-                ? 'you can vote now'
-                : `wait ${remainingSec}s`}
-            </div>
-            <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
-              <strong>Area:</strong>{' '}
-              {stats.loading
-                ? 'loading...'
-                : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
-            </div>
-          </div>
-        </div>
+  <div>
+    <strong>User:</strong> {userId || 'loading...'}
+  </div>
+  <div>
+    <strong>Location:</strong>{' '}
+    {gpsAllowed === null
+      ? 'requesting...'
+      : gpsAllowed
+      ? `${coords?.lat}, ${coords?.lng}`
+      : 'denied'}
+  </div>
+  <div>
+    <strong>Vote:</strong>{' '}
+    {gpsAllowed !== true
+      ? 'enable location'
+      : canVote
+      ? 'you can vote now'
+      : `wait ${remainingSec}s`}
+  </div>
+  <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
+    <strong>Area:</strong>{' '}
+    {stats.loading
+      ? 'loading...'
+      : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
+  </div>
+
+  <form
+    onSubmit={handleCitySearch}
+    style={{ marginTop: 6, display: 'flex', gap: 4 }}
+  >
+    <input
+      type="text"
+      placeholder="Search city..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      style={{
+        flex: 1,
+        fontSize: 11,
+        padding: '4px 6px',
+        borderRadius: 6,
+        border: 'none',
+        outline: 'none'
+      }}
+    />
+    <button
+      type="submit"
+      disabled={searchLoading}
+      style={{
+        fontSize: 11,
+        padding: '4px 8px',
+        borderRadius: 6,
+        background: searchLoading ? '#374151' : '#22c55e',
+        color: '#fff',
+        cursor: 'pointer'
+      }}
+    >
+      Go
+    </button>
+  </form>
+  {searchError && (
+    <div style={{ marginTop: 2, fontSize: 9, color: '#f97316' }}>
+      {searchError}
+    </div>
+  )}
+</div>
+
 
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
