@@ -15,7 +15,7 @@ const EMOTION_COLORS = {
 
 // A felesleges, egyedi stílus objektumot eltávolítottuk.
 
-export function MapView({ coords, onBoundsChange, pulses }) {
+export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
@@ -63,13 +63,17 @@ export function MapView({ coords, onBoundsChange, pulses }) {
 
   // center map on user coords
   useEffect(() => {
-    if (!coords || !mapRef.current) return;
-    mapRef.current.flyTo({
-      center: [coords.lng, coords.lat],
-      zoom: 10,
-      speed: 0.9
-    });
-  }, [coords?.lat, coords?.lng]);
+ const map = mapRef.current;
+ if (!map) return;
+ const target = viewCenter || coords;
+if (!target) return;
+
+map.flyTo({
+ center: [target.lng, target.lat],
+  zoom: viewCenter?.zoom || 10,
+   speed: 0.9
+});
+}, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
   // show user position as a blue dot
   useEffect(() => {
