@@ -1,5 +1,5 @@
 // src/MapView.jsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react'; // 🆕 useState import
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -17,6 +17,10 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
+  
+  // 🆕 Új state-ek advanced controls-hoz
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showPulses, setShowPulses] = useState(true);
 
   // Init map once
   useEffect(() => {
@@ -110,7 +114,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
 
   // show pulses (new events)
   useEffect(() => {
-    if (!mapRef.current || !pulses || pulses.length === 0) return;
+    if (!mapRef.current || !pulses || pulses.length === 0 || !showPulses) return;
     const map = mapRef.current;
 
     pulses.forEach((p) => {
@@ -140,7 +144,31 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
         marker.remove();
       }, 6000);
     });
-  }, [pulses]);
+  }, [pulses, showPulses]); // 🆕 showPulses dependency
+
+  // 🆕 Toggle heatmap
+  const toggleHeatmap = () => {
+    setShowHeatmap(!showHeatmap);
+    // Itt később implementálhatod a tényleges heatmap layer-t
+    console.log('Heatmap toggled:', !showHeatmap);
+  };
+
+  // 🆕 Toggle pulses
+  const togglePulses = () => {
+    setShowPulses(!showPulses);
+  };
+
+  // 🆕 Reset view
+  const resetView = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    
+    map.flyTo({
+      center: [19, 47],
+      zoom: 4,
+      speed: 1.2
+    });
+  };
 
   // zoom controls
   function handleZoomIn() {
@@ -175,7 +203,31 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
         <button onClick={handleZoomOut}>−</button>
       </div>
       
-      {/* ÚJ: Vissza hozzám gomb */}
+      {/* 🆕 Advanced Map Controls */}
+      <div className="map-advanced-controls">
+        <button 
+          onClick={toggleHeatmap}
+          className={showHeatmap ? 'active' : ''}
+          title="Toggle Heatmap"
+        >
+          🔥
+        </button>
+        <button 
+          onClick={togglePulses}
+          className={showPulses ? 'active' : ''}
+          title="Toggle Pulses"
+        >
+          ⚡
+        </button>
+        <button 
+          onClick={resetView}
+          title="Reset View"
+        >
+          🌀
+        </button>
+      </div>
+      
+      {/* Vissza hozzám gomb */}
       {coords && (
         <button 
           className="back-to-me-btn"
