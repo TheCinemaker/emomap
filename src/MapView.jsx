@@ -25,29 +25,29 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: {
-      version: 8,
-      sources: {
-        'osm-tiles': {
-          type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '© OpenStreetMap contributors'
-        }
+        version: 8,
+        sources: {
+          'osm-tiles': {
+            type: 'raster',
+            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+            tileSize: 256,
+            attribution: '© OpenStreetMap contributors'
+          }
+        },
+        layers: [
+          {
+            id: 'osm-tiles',
+            type: 'raster',
+            source: 'osm-tiles',
+            minzoom: 0,
+            maxzoom: 19
+          }
+        ]
       },
-      layers: [
-        {
-          id: 'osm-tiles',
-          type: 'raster',
-          source: 'osm-tiles',
-          minzoom: 0,
-          maxzoom: 19
-        }
-      ]
-    },
-    center: [19, 47],
-    zoom: 4,
-    attributionControl: false
-  });
+      center: [19, 47],
+      zoom: 4,
+      attributionControl: false
+    });
 
     // enable interactions
     map.dragPan.enable();
@@ -147,22 +147,13 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     if (!mapRef.current) return;
     mapRef.current.zoomIn();
   }
+  
   function handleZoomOut() {
     if (!mapRef.current) return;
     mapRef.current.zoomOut();
   }
 
-  return (
-    <div className="map-container" ref={mapContainerRef}>
-      <div className="map-zoom-controls">
-        <button onClick={handleZoomIn}>+</button>
-        <button onClick={handleZoomOut}>−</button>
-      </div>
-    </div>
-  );
-}
-
-// Vissza a saját pozícióhoz
+  // Vissza a saját pozícióhoz
   function handleBackToMe() {
     const map = mapRef.current;
     if (!map || !coords) return;
