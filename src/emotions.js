@@ -1,10 +1,10 @@
 // src/emotions.js
 export const EMOTIONS = [
-  { id: 'happy', label: '😊', name: 'Boldog' },
-  { id: 'bored', label: '😐', name: 'Unatkozik' },
-  { id: 'stressed', label: '😡', name: 'Stresszes' },
-  { id: 'tired', label: '😴', name: 'Fáradt' },
-  { id: 'motivated', label: '💪', name: 'Motivált' },
-  { id: 'love', label: '❤️', name: 'Szerelmes' },
-  { id: 'hype', label: '🚀', name: 'Hype' }
+  { id: 'happy', name: 'Happy', label: '😊', color: '#22c55e' },
+  { id: 'bored', name: 'Bored', label: '😐', color: '#9ca3af' },
+  { id: 'stressed', name: 'Stressed', label: '😫', color: '#ef4444' },
+  { id: 'tired', name: 'Tired', label: '😴', color: '#facc15' },
+  { id: 'motivated', name: 'Motivated', label: '💪', color: '#0ea5e9' },
+  { id: 'love', name: 'Love', label: '❤️', color: '#ec4899' },
+  { id: 'hype', name: 'Hype', label: '🔥', color: '#a855f7' }
 ];
