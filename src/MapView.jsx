@@ -24,11 +24,30 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: 'https://tiles.stadiamaps.com/styles/alidade_smooth_dark.json',
-      center: [19, 47],
-      zoom: 4,
-      attributionControl: false
-    });
+      style: {
+      version: 8,
+      sources: {
+        'osm-tiles': {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          attribution: '© OpenStreetMap contributors'
+        }
+      },
+      layers: [
+        {
+          id: 'osm-tiles',
+          type: 'raster',
+          source: 'osm-tiles',
+          minzoom: 0,
+          maxzoom: 19
+        }
+      ]
+    },
+    center: [19, 47],
+    zoom: 4,
+    attributionControl: false
+  });
 
     // enable interactions
     map.dragPan.enable();
