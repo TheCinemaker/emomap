@@ -244,15 +244,14 @@ button {
   inset: 0;
   pointer-events: none;
   z-index: 2; /* map fölött, overlay alatt */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mood-aura-inner {
-  position: absolute;
   width: 60vmin;
   height: 60vmin;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
   border-radius: 999px;
   background: radial-gradient(
     circle,
@@ -265,10 +264,10 @@ button {
 
 @keyframes mood-breathe {
   0% {
-    transform: translate(-50%, -50%) scale(0.9);
+    transform: scale(0.9);
   }
   100% {
-    transform: translate(-50%, -50%) scale(1.1);
+    transform: scale(1.1);
   }
 }
 
