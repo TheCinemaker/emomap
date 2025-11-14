@@ -4,21 +4,22 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const EMOTION_COLORS = {
-  happy: '#22c55e',
-  bored: '#9ca3af',
-  stressed: '#ef4444',
-  tired: '#facc15',
-  motivated: '#0ea5e9',
-  love: '#ec4899',
-  hype: '#a855f7'
+  happy: '#22c55e',     // zöld
+  bored: '#9ca3af',     // szürke
+  stressed: '#ef4444',  // piros
+  tired: '#facc15',     // sárga
+  motivated: '#0ea5e9', // kék
+  love: '#ec4899',      // pink
+  hype: '#a855f7'       // lila
 };
 
-export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
+export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMood }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
+  const personalAuraRef = useRef(null);
 
-  // init map
+  // Init map once
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -45,10 +46,11 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
         ]
       },
       center: [19, 47],
-      zoom: 3,
+      zoom: 4,
       attributionControl: false
     });
 
+    // enable interactions
     map.dragPan.enable();
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
@@ -75,7 +77,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     };
   }, [onBoundsChange]);
 
-  // center map on coords / viewCenter
+  // center map on user coords
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -89,7 +91,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     });
   }, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
-  // show user position
+  // show user position as a blue dot
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -97,7 +99,9 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
       el.className = 'user-marker';
-      userMarkerRef.current = new maplibregl.Marker({ element: el })
+      userMarkerRef.current = new maplibregl.Marker({
+        element: el
+      })
         .setLngLat([coords.lng, coords.lat])
         .addTo(map);
     } else {
@@ -105,7 +109,56 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     }
   }, [coords]);
 
-  // pulses – körkörös villanás
+  // personal aura around user
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map || !coords) return;
+
+  // ha nincs mood szín, távolítsuk el az aurát
+  if (!personalMood || !personalMood.color || personalMood.total === 0) {
+    if (personalAuraRef.current) {
+      personalAuraRef.current.remove();
+      personalAuraRef.current = null;
+    }
+    return;
+  }
+
+  const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
+
+  if (!personalAuraRef.current) {
+    // létrehozzuk a marker elementet
+    const container = document.createElement('div');
+    container.className = 'personal-aura';
+
+    const inner = document.createElement('div');
+    inner.className = 'personal-aura-inner';
+    container.appendChild(inner);
+
+    inner.style.setProperty('--personal-color', personalMood.color);
+    inner.style.opacity = String(opacity);
+
+    const marker = new maplibregl.Marker({
+      element: container
+    })
+      .setLngLat([coords.lng, coords.lat])
+      .addTo(map);
+
+    personalAuraRef.current = marker;
+  } else {
+    // frissítjük a meglévő aurát
+    const marker = personalAuraRef.current;
+    marker.setLngLat([coords.lng, coords.lat]);
+
+    const el = marker.getElement().querySelector('.personal-aura-inner');
+    if (el) {
+      el.style.setProperty('--personal-color', personalMood.color);
+      el.style.opacity = String(opacity);
+    }
+  }
+}, [coords, personalMood]);
+
+
+  // show pulses (new events)
   useEffect(() => {
     if (!mapRef.current || !pulses || pulses.length === 0) return;
     const map = mapRef.current;
@@ -139,20 +192,22 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     });
   }, [pulses]);
 
+  // zoom controls
   function handleZoomIn() {
     if (!mapRef.current) return;
     mapRef.current.zoomIn();
   }
-
+  
   function handleZoomOut() {
     if (!mapRef.current) return;
     mapRef.current.zoomOut();
   }
 
+  // Vissza a saját pozícióhoz
   function handleBackToMe() {
     const map = mapRef.current;
     if (!map || !coords) return;
-
+    
     map.flyTo({
       center: [coords.lng, coords.lat],
       zoom: 12,
@@ -167,12 +222,13 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
         <button onClick={handleZoomIn}>+</button>
         <button onClick={handleZoomOut}>−</button>
       </div>
-
+      
+      {/* Vissza hozzám gomb */}
       {coords && (
-        <button
+        <button 
           className="back-to-me-btn"
           onClick={handleBackToMe}
-          title="Back to my location"
+          title="Vissza a saját helyemhez"
         >
           📍
         </button>
