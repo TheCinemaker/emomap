@@ -13,13 +13,12 @@ const EMOTION_COLORS = {
   hype: '#a855f7'
 };
 
-export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells }) {
+export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
-  const gridMarkersRef = useRef([]); // rács-aurák markerjei
 
-  // Init map once
+  // init map
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -46,7 +45,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells 
         ]
       },
       center: [19, 47],
-      zoom: 4,
+      zoom: 3,
       attributionControl: false
     });
 
@@ -71,15 +70,12 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells 
     mapRef.current = map;
 
     return () => {
-      // grid aurák takarítása
-      gridMarkersRef.current.forEach(m => m.remove());
-      gridMarkersRef.current = [];
       map.remove();
       mapRef.current = null;
     };
   }, [onBoundsChange]);
 
-  // center map on GPS / keresett város
+  // center map on coords / viewCenter
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -93,7 +89,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells 
     });
   }, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
-  // user location marker
+  // show user position
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -109,7 +105,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells 
     }
   }, [coords]);
 
-  // pulses – rövid ideig villanó karikák
+  // pulses – körkörös villanás
   useEffect(() => {
     if (!mapRef.current || !pulses || pulses.length === 0) return;
     const map = mapRef.current;
@@ -139,46 +135,9 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells 
 
       setTimeout(() => {
         marker.remove();
-      }, 5000);
+      }, 6000);
     });
   }, [pulses]);
-
-  // GRID AURÁK – mindenki látja, ami a viewporton belül van
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    // előző cella-markerek törlése
-    gridMarkersRef.current.forEach((m) => m.remove());
-    gridMarkersRef.current = [];
-
-    if (!gridCells || gridCells.length === 0) return;
-
-    gridCells.forEach((cell) => {
-      const { lat, lng, color, intensity } = cell;
-      if (
-        typeof lat !== 'number' ||
-        typeof lng !== 'number' ||
-        !color
-      ) return;
-
-      const el = document.createElement('div');
-      el.className = 'grid-aura';
-      el.style.setProperty('--grid-color', color);
-      // kicsit erősebb, de intensity-től függ
-      const baseOpacity = 0.35;
-      const extra = 0.55 * (intensity || 0);
-      el.style.opacity = String(baseOpacity + extra);
-
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([lng, lat])
-        .addTo(map);
-
-      gridMarkersRef.current.push(marker);
-    });
-  }, [gridCells]);
-
-  // zoom + back-to-me
 
   function handleZoomIn() {
     if (!mapRef.current) return;
@@ -193,6 +152,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells 
   function handleBackToMe() {
     const map = mapRef.current;
     if (!map || !coords) return;
+
     map.flyTo({
       center: [coords.lng, coords.lat],
       zoom: 12,
