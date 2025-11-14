@@ -22,16 +22,6 @@ function getOrCreateUserId() {
   return id;
 }
 
-// Segédfüggvény idő formázáshoz
-function formatTimeAgo(timestamp) {
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  
-  if (seconds < 60) return 'just now';
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-  return `${Math.floor(seconds / 86400)}d ago`;
-}
-
 export default function App() {
   const [userId, setUserId] = useState(null);
   const [gpsAllowed, setGpsAllowed] = useState(null);
@@ -47,13 +37,8 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
 
-  // 🆕 ÚJ STATE-EK
-  const [isLoading, setIsLoading] = useState(true);
+  // 🆕 CSUPÁN 2 ÚJ STATE - semmi extra
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
-  const [recentPulses, setRecentPulses] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState(0);
-  const [activeNow, setActiveNow] = useState(0);
-
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -71,22 +56,6 @@ export default function App() {
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
       const merged = [...prev, ...batch];
-      
-      // 🆕 Frissítsd a recent pulses-t
-      if (batch.length > 0) {
-        setRecentPulses(prev => [
-          ...batch.map(pulse => ({
-            ...pulse,
-            timestamp: pulse.created_at || Date.now()
-          })),
-          ...prev.slice(0, 4) // Max 5 legújabb
-        ]);
-        
-        // 🆕 Simulált online users
-        setOnlineUsers(prev => Math.max(prev, Math.floor(Math.random() * 50) + 10));
-        setActiveNow(prev => Math.max(prev, Math.floor(Math.random() * 20) + 5));
-      }
-      
       return merged.slice(-100);
     });
   });
@@ -94,20 +63,6 @@ export default function App() {
   useEffect(() => {
     const id = getOrCreateUserId();
     setUserId(id);
-    
-    // 🆕 Simulált adatok betöltése
-    setTimeout(() => {
-      setIsLoading(false);
-      setOnlineUsers(Math.floor(Math.random() * 50) + 10);
-      setActiveNow(Math.floor(Math.random() * 20) + 5);
-      
-      // 🆕 Minta recent pulses
-      setRecentPulses([
-        { emotion: 'happy', timestamp: Date.now() - 30000, user_id: 'user_123' },
-        { emotion: 'motivated', timestamp: Date.now() - 120000, user_id: 'user_456' },
-        { emotion: 'hype', timestamp: Date.now() - 300000, user_id: 'user_789' }
-      ]);
-    }, 1500);
   }, []);
 
   useEffect(() => {
@@ -169,19 +124,11 @@ export default function App() {
       setEvents((prev) => [...prev, inserted || event]);
       setLastVoteAt(Date.now());
       
-      // 🆕 Vote confirmation
+      // 🆕 CSUPÁN EZ AZ EGY SOR - vote confirmation
       setLastVotedEmotion(emotionId);
-      setTimeout(() => setLastVotedEmotion(null), 2000);
+      setTimeout(() => setLastVotedEmotion(null), 1000);
 
       setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
-      
-      // 🆕 Add to recent pulses
-      setRecentPulses(prev => [{
-        emotion: emotionId,
-        timestamp: Date.now(),
-        user_id: userId
-      }, ...prev.slice(0, 4)]);
-      
     } catch (err) {
       console.error('Unexpected insert error:', err);
     }
@@ -237,19 +184,6 @@ export default function App() {
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
-  // 🆕 Loading screen
-  if (isLoading) {
-    return (
-      <div className="app-root loading">
-        <div className="loading-container">
-          <div className="cyberpunk-spinner"></div>
-          <div className="loading-text">Initializing EmoMap...</div>
-          <div className="loading-subtext">Connecting to emotional network</div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="app-root">
       <header className="app-header">
@@ -265,22 +199,9 @@ export default function App() {
             onBoundsChange={setMapBounds}
             pulses={pulseBatch}
           />
-          
           <div className="status-overlay">
-            {/* 🆕 Live Stats */}
-            <div className="live-stats">
-              <div className="stat">
-                <span className="value">{onlineUsers}</span>
-                <span className="label">online</span>
-              </div>
-              <div className="stat">
-                <span className="value">{activeNow}</span>
-                <span className="label">active now</span>
-              </div>
-            </div>
-
             <div>
-              <strong>User:</strong> {userId?.substring(0, 8)}...
+              <strong>User:</strong> {userId || 'loading...'}
             </div>
             <div>
               <strong>Location:</strong>{' '}
@@ -346,25 +267,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* 🆕 Emotion Timeline */}
-        {recentPulses.length > 0 && (
-          <div className="emotion-timeline">
-            <div className="timeline-header">Recent Activity</div>
-            <div className="timeline-items">
-              {recentPulses.slice(0, 5).map((pulse, index) => (
-                <div key={index} className="timeline-item">
-                  <span className="emoji">
-                    {EMOTIONS.find(e => e.id === pulse.emotion)?.label}
-                  </span>
-                  <span className="time">
-                    {formatTimeAgo(pulse.timestamp)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
             Select how you feel. You can send one pulse every 2 minutes from your
@@ -373,22 +275,19 @@ export default function App() {
           <div className="emotion-buttons">
             {EMOTIONS.map((e) => (
               <button
-  key={e.id}
-  className={
-    `emotion-button ${
-      !canVote || !coords || !userId ? 'disabled' : ''
-    } ${
-      lastVotedEmotion === e.id ? 'voted' : ''
-    }`
-  }
-  onClick={() => handleVote(e.id)}
-  style={{
-    '--emotion-color': e.color
-  }}
->
-  <span className="emoji">{e.label}</span>
-  <span className="label">{e.name}</span>
-</button>
+                key={e.id}
+                className={
+                  `emotion-button ${
+                    !canVote || !coords || !userId ? 'disabled' : ''
+                  } ${
+                    lastVotedEmotion === e.id ? 'voted' : ''
+                  }`
+                }
+                onClick={() => handleVote(e.id)}
+              >
+                <span className="emoji">{e.label}</span>
+                <span className="label">{e.name}</span>
+              </button>
             ))}
           </div>
         </div>
