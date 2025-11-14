@@ -180,7 +180,6 @@ async function handleCitySearch(e) {
   }
 }
 
-
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
@@ -200,72 +199,72 @@ async function handleCitySearch(e) {
             pulses={pulseBatch}
           />
           <div className="status-overlay">
-  <div>
-    <strong>User:</strong> {userId || 'loading...'}
-  </div>
-  <div>
-    <strong>Location:</strong>{' '}
-    {gpsAllowed === null
-      ? 'requesting...'
-      : gpsAllowed
-      ? `${coords?.lat}, ${coords?.lng}`
-      : 'denied'}
-  </div>
-  <div>
-    <strong>Vote:</strong>{' '}
-    {gpsAllowed !== true
-      ? 'enable location'
-      : canVote
-      ? 'you can vote now'
-      : `wait ${remainingSec}s`}
-  </div>
-  <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
-    <strong>Area:</strong>{' '}
-    {stats.loading
-      ? 'loading...'
-      : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
-  </div>
+            <div>
+              <strong>User:</strong> {userId || 'loading...'}
+            </div>
+            <div>
+              <strong>Location:</strong>{' '}
+              {gpsAllowed === null
+                ? 'requesting...'
+                : gpsAllowed
+                ? `${coords?.lat}, ${coords?.lng}`
+                : 'denied'}
+            </div>
+            <div>
+              <strong>Vote:</strong>{' '}
+              {gpsAllowed !== true
+                ? 'enable location'
+                : canVote
+                ? 'you can vote now'
+                : `wait ${remainingSec}s`}
+            </div>
+            <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
+              <strong>Area:</strong>{' '}
+              {stats.loading
+                ? 'loading...'
+                : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
+            </div>
 
-  <form
-    onSubmit={handleCitySearch}
-    style={{ marginTop: 6, display: 'flex', gap: 4 }}
-  >
-    <input
-      type="text"
-      placeholder="Search city..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      style={{
-        flex: 1,
-        fontSize: 11,
-        padding: '4px 6px',
-        borderRadius: 6,
-        border: 'none',
-        outline: 'none'
-      }}
-    />
-    <button
-      type="submit"
-      disabled={searchLoading}
-      style={{
-        fontSize: 11,
-        padding: '4px 8px',
-        borderRadius: 6,
-        background: searchLoading ? '#374151' : '#22c55e',
-        color: '#fff',
-        cursor: 'pointer'
-      }}
-    >
-      Go
-    </button>
-  </form>
-  {searchError && (
-    <div style={{ marginTop: 2, fontSize: 9, color: '#f97316' }}>
-      {searchError}
-    </div>
-  )}
-</div>
-
+            <form
+              onSubmit={handleCitySearch}
+              style={{ marginTop: 6, display: 'flex', gap: 4 }}
+            >
+              <input
+                type="text"
+                placeholder="Search city..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{
+                  flex: 1,
+                  fontSize: 11,
+                  padding: '4px 6px',
+                  borderRadius: 6,
+                  border: 'none',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="submit"
+                disabled={searchLoading}
+                style={{
+                  fontSize: 11,
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  background: searchLoading ? '#374151' : '#22c55e',
+                  color: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                Go
+              </button>
+            </form>
+            {searchError && (
+              <div style={{ marginTop: 2, fontSize: 9, color: '#f97316' }}>
+                {searchError}
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
