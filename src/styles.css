@@ -102,7 +102,7 @@ button {
   pointer-events: none;
 }
 
-/* 🆕 CSUPÁN EZ AZ EGY ÚJ CSS - vote confirmation */
+/* vote confirmation */
 .emotion-button.voted {
   background: rgba(34, 197, 94, 0.2) !important;
   border-color: #22c55e !important;
@@ -130,10 +130,10 @@ button {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(6px);
-  z-index: 4;
+  z-index: 5;
 }
 
-/* PULSE MARKER */
+/* PULSE MARKER – rövid flash a kattintásra */
 .pulse-marker-container {
   width: 150px;
   height: 150px;
@@ -234,72 +234,28 @@ button {
   transform: scale(0.95);
 }
 
+/* kicsit „game-like” mapa */
 .map-container canvas {
-  filter: saturate(0.7) brightness(0.6) contrast(1.2);
+  filter: saturate(0.8) brightness(0.7) contrast(1.25);
 }
 
-/* MOOD AURA – város hangulata a viewport közepén */
-.mood-aura {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2; /* map fölött, overlay alatt */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mood-aura-inner {
-  width: 60vmin;
-  height: 60vmin;
+/* GRID AURÁK – kb. 1 km-es körök, mindenki látja */
+.grid-aura {
+  width: 80px;   /* zoom 12-13 környékén ~1 km */
+  height: 80px;
   border-radius: 999px;
+  pointer-events: none;
   background: radial-gradient(
     circle,
-    var(--mood-color, rgba(56, 189, 248, 0.5)) 0%,
+    var(--grid-color, rgba(56,189,248,0.9)) 0%,
+    rgba(56,189,248,0.4) 40%,
     transparent 70%
   );
   mix-blend-mode: screen;
-  animation: mood-breathe 6s ease-in-out infinite alternate;
+  animation: grid-breathe 5s ease-in-out infinite alternate;
 }
 
-@keyframes mood-breathe {
-  0% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1.1);
-  }
-}
-
-/* hogy biztosan felül legyen minden fölött a status-overlay */
-.status-overlay {
-  z-index: 5;
-}
-
-/* SAJÁT AURA – a user-marker körül */
-.personal-aura {
-  position: relative;
-  width: 180px;
-  height: 180px;
-  border-radius: 999px;
-  pointer-events: none;
-}
-
-.personal-aura-inner {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: radial-gradient(
-    circle,
-    var(--personal-color, rgba(56, 189, 248, 0.8)) 0%,
-    rgba(56, 189, 248, 0.4) 35%,
-    transparent 75%
-  );
-  mix-blend-mode: screen;
-  animation: personal-breathe 4s ease-in-out infinite alternate;
-}
-
-@keyframes personal-breathe {
+@keyframes grid-breathe {
   0% {
     transform: scale(0.9);
     opacity: 0.6;
@@ -309,5 +265,3 @@ button {
     opacity: 1;
   }
 }
-
-
