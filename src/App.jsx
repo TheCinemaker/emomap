@@ -8,8 +8,6 @@ import { useEmotionsStats } from './useEmotionsStats';
 import { usePersonalMood } from './usePersonalMood';
 import { useAreaMood } from './useAreaMood';
 
-
-
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -56,7 +54,7 @@ export default function App() {
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
   const personalMood = usePersonalMood(coords, SESSION_ID);
-  const AreaMood = useAreaMood(coords, SESSION_ID);
+  const areaMood = useAreaMood(mapBounds, SESSION_ID); // 🆕 EZ HIÁNYZOTT!
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
@@ -129,7 +127,6 @@ export default function App() {
       setEvents((prev) => [...prev, inserted || event]);
       setLastVoteAt(Date.now());
       
-      // 🆕 CSUPÁN EZ AZ EGY SOR - vote confirmation
       setLastVotedEmotion(emotionId);
       setTimeout(() => setLastVotedEmotion(null), 1000);
 
@@ -198,25 +195,27 @@ export default function App() {
 
       <main className="app-main">
         <div className="map-wrapper">
-  <MapView
-    coords={coords}
-    viewCenter={viewCenter}
-    onBoundsChange={setMapBounds}
-    pulses={pulseBatch}
-    personalMood={personalMood} 
-  />
+          <MapView
+            coords={coords}
+            viewCenter={viewCenter}
+            onBoundsChange={setMapBounds}
+            pulses={pulseBatch}
+            personalMood={personalMood} 
+          />
 
-  {areaMood && areaMood.color && (
-  <div className="mood-aura">
-    <div
-      className="mood-aura-inner"
-      style={{
-        '--mood-color': areaMood.color,
-        opacity: 0.25 + 0.5 * areaMood.intensity
-      }}
-    />
-  </div>
-)}
+          {/* 🆕 Area Mood Aura */}
+          {areaMood && areaMood.color && (
+            <div className="mood-aura">
+              <div
+                className="mood-aura-inner"
+                style={{
+                  '--mood-color': areaMood.color,
+                  opacity: 0.25 + 0.5 * areaMood.intensity
+                }}
+              />
+            </div>
+          )}
+
           <div className="status-overlay">
             <div>
               <strong>User:</strong> {userId || 'loading...'}
@@ -244,18 +243,19 @@ export default function App() {
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
             </div>
             
-<div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-  <strong>Mood debug:</strong>{' '}
-  {areaMood.color
-    ? `${areaMood.color} · total ${areaMood.total}`
-    : 'no mood data'}
-</div>
-<div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-  <strong>My mood:</strong>{' '}
-  {personalMood.color
-    ? `${personalMood.color} · total ${personalMood.total}`
-    : 'no data yet'}
-</div>
+            {/* 🆕 Mood Debug Info */}
+            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+              <strong>Area Mood:</strong>{' '}
+              {areaMood && areaMood.color
+                ? `${areaMood.color} · total ${areaMood.total}`
+                : 'no mood data'}
+            </div>
+            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+              <strong>My Mood:</strong>{' '}
+              {personalMood && personalMood.color
+                ? `${personalMood.color} · total ${personalMood.total}`
+                : 'no data yet'}
+            </div>
 
             <form
               onSubmit={handleCitySearch}
