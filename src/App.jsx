@@ -5,8 +5,7 @@ import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
-import { usePersonalMood } from './usePersonalMood';
-import { useAreaMood } from './useAreaMood';
+import { useMoodGrid } from './useMoodGrid';
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
@@ -42,20 +41,19 @@ export default function App() {
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
 
+  // timer a visszaszámlálóhoz
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
   }, []);
 
+  // statisztika a viewport területére
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
-  const personalMood = usePersonalMood(coords, SESSION_ID);
-  const areaMood = useAreaMood(mapBounds, SESSION_ID); // 🆕 EZ HIÁNYZOTT!
 
+  // GRID mood – 1 km-es aurák a viewporton belül
+  const moodGrid = useMoodGrid(mapBounds, SESSION_ID);
+
+  // pulzusok folyamatos pollolása
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
       const merged = [...prev, ...batch];
@@ -63,11 +61,13 @@ export default function App() {
     });
   });
 
+  // userId init
   useEffect(() => {
     const id = getOrCreateUserId();
     setUserId(id);
   }, []);
 
+  // GPS kérés
   useEffect(() => {
     if (!('geolocation' in navigator)) {
       setGpsAllowed(false);
@@ -91,6 +91,7 @@ export default function App() {
     );
   }, []);
 
+  // visszaszámláló
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
     return now - lastVoteAt;
@@ -98,6 +99,7 @@ export default function App() {
 
   const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
 
+  // csak a SAJÁT GPS-helyről lehet szavazni – coords mindig GPS
   async function handleVote(emotionId) {
     if (!canVote) return;
     if (!coords || !userId) return;
@@ -126,11 +128,15 @@ export default function App() {
 
       setEvents((prev) => [...prev, inserted || event]);
       setLastVoteAt(Date.now());
-      
+
+      // rövid gomb-highlight
       setLastVotedEmotion(emotionId);
       setTimeout(() => setLastVotedEmotion(null), 1000);
 
-      setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
+      // instant pulse a saját helyen
+      setPulseBatch([
+        inserted || { ...event, lat: coords.lat, lng: coords.lng }
+      ]);
     } catch (err) {
       console.error('Unexpected insert error:', err);
     }
@@ -150,14 +156,12 @@ export default function App() {
         encodeURIComponent(q);
 
       const res = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en'
-        }
+        headers: { 'Accept-Language': 'en' }
       });
 
       if (!res.ok) throw new Error('Search failed: ' + res.status);
-      const data = await res.json();
 
+      const data = await res.json();
       if (!data || !data.length) {
         setSearchError('No results');
         setSearchLoading(false);
@@ -174,6 +178,7 @@ export default function App() {
         return;
       }
 
+      // ide ugrik a kamera, de szavazni továbbra is csak coords (GPS) helyről lehet
       setViewCenter({ lat, lng, zoom: 11 });
       setSearchLoading(false);
     } catch (err) {
@@ -200,21 +205,8 @@ export default function App() {
             viewCenter={viewCenter}
             onBoundsChange={setMapBounds}
             pulses={pulseBatch}
-            personalMood={personalMood} 
+            gridCells={moodGrid.cells}
           />
-
-          {/* 🆕 Area Mood Aura */}
-          {areaMood && areaMood.color && (
-            <div className="mood-aura">
-              <div
-                className="mood-aura-inner"
-                style={{
-                  '--mood-color': areaMood.color,
-                  opacity: 0.25 + 0.5 * areaMood.intensity
-                }}
-              />
-            </div>
-          )}
 
           <div className="status-overlay">
             <div>
@@ -242,19 +234,11 @@ export default function App() {
                 ? 'loading...'
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
             </div>
-            
-            {/* 🆕 Mood Debug Info */}
             <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>Area Mood:</strong>{' '}
-              {areaMood && areaMood.color
-                ? `${areaMood.color} · total ${areaMood.total}`
-                : 'no mood data'}
-            </div>
-            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>My Mood:</strong>{' '}
-              {personalMood && personalMood.color
-                ? `${personalMood.color} · total ${personalMood.total}`
-                : 'no data yet'}
+              <strong>Grid cells:</strong>{' '}
+              {moodGrid.loading
+                ? 'loading...'
+                : `${moodGrid.cells.length} · points: ${moodGrid.totalPoints}`}
             </div>
 
             <form
