@@ -1,5 +1,5 @@
 // src/MapView.jsx
-import React, { useEffect, useRef, useState } from 'react'; // 🆕 useState import
+import React, { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
@@ -17,10 +17,6 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
-  
-  // 🆕 Új state-ek advanced controls-hoz
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [showPulses, setShowPulses] = useState(true);
 
   // Init map once
   useEffect(() => {
@@ -114,7 +110,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
 
   // show pulses (new events)
   useEffect(() => {
-    if (!mapRef.current || !pulses || pulses.length === 0 || !showPulses) return;
+    if (!mapRef.current || !pulses || pulses.length === 0) return;
     const map = mapRef.current;
 
     pulses.forEach((p) => {
@@ -144,31 +140,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
         marker.remove();
       }, 6000);
     });
-  }, [pulses, showPulses]); // 🆕 showPulses dependency
-
-  // 🆕 Toggle heatmap
-  const toggleHeatmap = () => {
-    setShowHeatmap(!showHeatmap);
-    // Itt később implementálhatod a tényleges heatmap layer-t
-    console.log('Heatmap toggled:', !showHeatmap);
-  };
-
-  // 🆕 Toggle pulses
-  const togglePulses = () => {
-    setShowPulses(!showPulses);
-  };
-
-  // 🆕 Reset view
-  const resetView = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    
-    map.flyTo({
-      center: [19, 47],
-      zoom: 4,
-      speed: 1.2
-    });
-  };
+  }, [pulses]);
 
   // zoom controls
   function handleZoomIn() {
@@ -186,8 +158,6 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
     const map = mapRef.current;
     if (!map || !coords) return;
     
-    console.log('Flying back to user location:', coords.lat, coords.lng);
-    
     map.flyTo({
       center: [coords.lng, coords.lat],
       zoom: 12,
@@ -203,30 +173,6 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
         <button onClick={handleZoomOut}>−</button>
       </div>
       
-      {/* 🆕 Advanced Map Controls */}
-      <div className="map-advanced-controls">
-        <button 
-          onClick={toggleHeatmap}
-          className={showHeatmap ? 'active' : ''}
-          title="Toggle Heatmap"
-        >
-          🔥
-        </button>
-        <button 
-          onClick={togglePulses}
-          className={showPulses ? 'active' : ''}
-          title="Toggle Pulses"
-        >
-          ⚡
-        </button>
-        <button 
-          onClick={resetView}
-          title="Reset View"
-        >
-          🌀
-        </button>
-      </div>
-      
       {/* Vissza hozzám gomb */}
       {coords && (
         <button 
@@ -234,10 +180,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
           onClick={handleBackToMe}
           title="Vissza a saját helyemhez"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
-            <circle cx="12" cy="10" r="3"/>
-          </svg>
+          📍
         </button>
       )}
     </div>
