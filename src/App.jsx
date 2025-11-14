@@ -239,6 +239,12 @@ export default function App() {
                 ? 'loading...'
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
             </div>
+<div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+  <strong>Mood debug:</strong>{' '}
+  {areaMood.color
+    ? `${areaMood.color} · total ${areaMood.total}`
+    : 'no mood data'}
+</div>
 
             <form
               onSubmit={handleCitySearch}
