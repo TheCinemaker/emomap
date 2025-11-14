@@ -13,10 +13,11 @@ const EMOTION_COLORS = {
   hype: '#a855f7'       // lila
 };
 
-export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
+export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMood }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
+  const personalAuraRef = useRef(null);
 
   // Init map once
   useEffect(() => {
@@ -107,6 +108,55 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses }) {
       userMarkerRef.current.setLngLat([coords.lng, coords.lat]);
     }
   }, [coords]);
+
+  // personal aura around user
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map || !coords) return;
+
+  // ha nincs mood szín, távolítsuk el az aurát
+  if (!personalMood || !personalMood.color || personalMood.total === 0) {
+    if (personalAuraRef.current) {
+      personalAuraRef.current.remove();
+      personalAuraRef.current = null;
+    }
+    return;
+  }
+
+  const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
+
+  if (!personalAuraRef.current) {
+    // létrehozzuk a marker elementet
+    const container = document.createElement('div');
+    container.className = 'personal-aura';
+
+    const inner = document.createElement('div');
+    inner.className = 'personal-aura-inner';
+    container.appendChild(inner);
+
+    inner.style.setProperty('--personal-color', personalMood.color);
+    inner.style.opacity = String(opacity);
+
+    const marker = new maplibregl.Marker({
+      element: container
+    })
+      .setLngLat([coords.lng, coords.lat])
+      .addTo(map);
+
+    personalAuraRef.current = marker;
+  } else {
+    // frissítjük a meglévő aurát
+    const marker = personalAuraRef.current;
+    marker.setLngLat([coords.lng, coords.lat]);
+
+    const el = marker.getElement().querySelector('.personal-aura-inner');
+    if (el) {
+      el.style.setProperty('--personal-color', personalMood.color);
+      el.style.opacity = String(opacity);
+    }
+  }
+}, [coords, personalMood]);
+
 
   // show pulses (new events)
   useEffect(() => {
