@@ -5,14 +5,11 @@ import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
+import { usePersonalMood } from './usePersonalMood';
+import { useAreaMood } from './useAreaMood';
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
-
-// DEV mód: ?dev=1 az URL-ben
-const DEV_MODE =
-  typeof window !== 'undefined' &&
-  window.location.search.includes('dev=1');
 
 function getOrCreateUserId() {
   if (typeof window === 'undefined') return null;
@@ -27,23 +24,12 @@ function getOrCreateUserId() {
   return id;
 }
 
-// kis helper a színmixhez
-function hexToRgb(hex) {
-  if (!hex) return null;
-  const clean = hex.replace('#', '');
-  if (clean.length !== 6) return null;
-  const r = parseInt(clean.slice(0, 2), 16);
-  const g = parseInt(clean.slice(2, 4), 16);
-  const b = parseInt(clean.slice(4, 6), 16);
-  if ([r, g, b].some((v) => Number.isNaN(v))) return null;
-  return { r, g, b };
-}
-
 export default function App() {
   const [userId, setUserId] = useState(null);
   const [gpsAllowed, setGpsAllowed] = useState(null);
   const [coords, setCoords] = useState(null);
   const [lastVoteAt, setLastVoteAt] = useState(null);
+  const [events, setEvents] = useState([]);
 
   const [mapBounds, setMapBounds] = useState(null);
   const [pulseBatch, setPulseBatch] = useState([]);
@@ -56,31 +42,32 @@ export default function App() {
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  // "óra" a rate limithez
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 1000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
+  const personalMood = usePersonalMood(coords, SESSION_ID);
+  const areaMood = useAreaMood(mapBounds, SESSION_ID); // 🆕 EZ HIÁNYZOTT!
 
-  // 🔁 folyamatos polling – mindig az aktuális bounds-ra
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
       const merged = [...prev, ...batch];
-      return merged.slice(-200); // max 200 pulse a memóriában
+      return merged.slice(-100);
     });
   });
 
-  // userId init
   useEffect(() => {
     const id = getOrCreateUserId();
     setUserId(id);
   }, []);
 
-  // GPS kérés
   useEffect(() => {
     if (!('geolocation' in navigator)) {
       setGpsAllowed(false);
@@ -104,69 +91,23 @@ export default function App() {
     );
   }, []);
 
-  // mennyi idő telt el az utolsó szavazat óta
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
     return now - lastVoteAt;
   }, [lastVoteAt, now]);
 
-  // DEV módban GPS nélkül is szavazhatsz
-  const canVote =
-    (DEV_MODE || gpsAllowed === true) &&
-    msSinceLastVote >= RATE_LIMIT_MS;
+  const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
 
-  // 🔮 AREA MOOD – teljesen a pulseBatch-ből
-  const areaMood = useMemo(() => {
-    if (!pulseBatch || pulseBatch.length === 0) return null;
-
-    const counts = {};
-    pulseBatch.forEach((p) => {
-      if (!p.emotion) return;
-      counts[p.emotion] = (counts[p.emotion] || 0) + 1;
-    });
-
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    if (!total) return null;
-
-    let r = 0;
-    let g = 0;
-    let b = 0;
-
-    EMOTIONS.forEach((e) => {
-      const c = hexToRgb(e.color);
-      if (!c) return;
-      const weight = (counts[e.id] || 0) / total;
-      if (!weight) return;
-      r += c.r * weight;
-      g += c.g * weight;
-      b += c.b * weight;
-    });
-
-    const color = `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
-    // intenzitás: minél több kattintás az adott viewban, annál erősebb
-    const intensity = Math.min(1, Math.log10(total + 1) / 2);
-
-    return { color, intensity, total };
-  }, [pulseBatch]);
-
-  // ⬆⬇ VOTE – dev módban a viewCenter-re lövünk, egyébként GPS-re
   async function handleVote(emotionId) {
     if (!canVote) return;
-    if (!userId) return;
-
-    const votePoint =
-      DEV_MODE && viewCenter
-        ? { lat: viewCenter.lat, lng: viewCenter.lng }
-        : coords;
-
-    if (!votePoint) return;
+    if (!coords || !userId) return;
 
     const event = {
       user_id: userId,
       session_id: SESSION_ID,
       emotion: emotionId,
-      lat: votePoint.lat,
-      lng: votePoint.lng
+      lat: coords.lat,
+      lng: coords.lng
     };
 
     try {
@@ -180,22 +121,21 @@ export default function App() {
         return;
       }
 
-      const inserted = data?.[0] || event;
+      const inserted = data?.[0];
+      console.log('EVENT STORED:', inserted || event);
 
+      setEvents((prev) => [...prev, inserted || event]);
       setLastVoteAt(Date.now());
+      
       setLastVotedEmotion(emotionId);
       setTimeout(() => setLastVotedEmotion(null), 1000);
 
-      // azonnali pulse a mapnek
-      setPulseBatch((prev) =>
-        [...prev, inserted].slice(-200)
-      );
+      setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
     } catch (err) {
       console.error('Unexpected insert error:', err);
     }
   }
 
-  // város kereső – viewCenter beállítása
   async function handleCitySearch(e) {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -250,10 +190,7 @@ export default function App() {
     <div className="app-root">
       <header className="app-header">
         <div className="app-title">EmoMap – Heatmap of Emotions</div>
-        <div className="app-session">
-          session: {SESSION_ID}
-          {DEV_MODE && ' · DEV'}
-        </div>
+        <div className="app-session">session: {SESSION_ID}</div>
       </header>
 
       <main className="app-main">
@@ -263,16 +200,17 @@ export default function App() {
             viewCenter={viewCenter}
             onBoundsChange={setMapBounds}
             pulses={pulseBatch}
+            personalMood={personalMood} 
           />
 
-          {/* AURA az aktuális viewport hangulata alapján */}
+          {/* 🆕 Area Mood Aura */}
           {areaMood && areaMood.color && (
             <div className="mood-aura">
               <div
                 className="mood-aura-inner"
                 style={{
                   '--mood-color': areaMood.color,
-                  opacity: 0.2 + 0.5 * areaMood.intensity
+                  opacity: 0.25 + 0.5 * areaMood.intensity
                 }}
               />
             </div>
@@ -280,8 +218,7 @@ export default function App() {
 
           <div className="status-overlay">
             <div>
-              <strong>User:</strong>{' '}
-              {userId ? userId.substring(0, 10) + '…' : 'loading...'}
+              <strong>User:</strong> {userId || 'loading...'}
             </div>
             <div>
               <strong>Location:</strong>{' '}
@@ -293,7 +230,7 @@ export default function App() {
             </div>
             <div>
               <strong>Vote:</strong>{' '}
-              {gpsAllowed !== true && !DEV_MODE
+              {gpsAllowed !== true
                 ? 'enable location'
                 : canVote
                 ? 'you can vote now'
@@ -304,6 +241,20 @@ export default function App() {
               {stats.loading
                 ? 'loading...'
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
+            </div>
+            
+            {/* 🆕 Mood Debug Info */}
+            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+              <strong>Area Mood:</strong>{' '}
+              {areaMood && areaMood.color
+                ? `${areaMood.color} · total ${areaMood.total}`
+                : 'no mood data'}
+            </div>
+            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+              <strong>My Mood:</strong>{' '}
+              {personalMood && personalMood.color
+                ? `${personalMood.color} · total ${personalMood.total}`
+                : 'no data yet'}
             </div>
 
             <form
@@ -349,21 +300,21 @@ export default function App() {
 
         <div className="app-footer">
           <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
-            Select how you feel. You can send one pulse every 2 minutes from
-            your current location
-            {DEV_MODE ? ' (or from map center in DEV mode).' : '.'}
+            Select how you feel. You can send one pulse every 2 minutes from your
+            current location.
           </p>
           <div className="emotion-buttons">
             {EMOTIONS.map((e) => (
               <button
                 key={e.id}
                 className={
-                  `emotion-button ` +
-                  (!canVote || !userId ? 'disabled ' : '') +
-                  (lastVotedEmotion === e.id ? 'voted' : '')
+                  `emotion-button ${
+                    !canVote || !coords || !userId ? 'disabled' : ''
+                  } ${
+                    lastVotedEmotion === e.id ? 'voted' : ''
+                  }`
                 }
                 onClick={() => handleVote(e.id)}
-                style={{ '--emotion-color': e.color }}
               >
                 <span className="emoji">{e.label}</span>
                 <span className="label">{e.name}</span>
