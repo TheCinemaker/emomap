@@ -4,20 +4,20 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const EMOTION_COLORS = {
-  happy: '#22c55e',     // zöld
-  bored: '#9ca3af',     // szürke
-  stressed: '#ef4444',  // piros
-  tired: '#facc15',     // sárga
-  motivated: '#0ea5e9', // kék
-  love: '#ec4899',      // pink
-  hype: '#a855f7'       // lila
+  happy: '#22c55e',
+  bored: '#9ca3af',
+  stressed: '#ef4444',
+  tired: '#facc15',
+  motivated: '#0ea5e9',
+  love: '#ec4899',
+  hype: '#a855f7'
 };
 
-export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMood }) {
+export function MapView({ coords, viewCenter, onBoundsChange, pulses, gridCells }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
-  const personalAuraRef = useRef(null);
+  const gridMarkersRef = useRef([]); // rács-aurák markerjei
 
   // Init map once
   useEffect(() => {
@@ -50,7 +50,6 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
       attributionControl: false
     });
 
-    // enable interactions
     map.dragPan.enable();
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
@@ -72,12 +71,15 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     mapRef.current = map;
 
     return () => {
+      // grid aurák takarítása
+      gridMarkersRef.current.forEach(m => m.remove());
+      gridMarkersRef.current = [];
       map.remove();
       mapRef.current = null;
     };
   }, [onBoundsChange]);
 
-  // center map on user coords
+  // center map on GPS / keresett város
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -91,7 +93,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     });
   }, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
-  // show user position as a blue dot
+  // user location marker
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -99,9 +101,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
       el.className = 'user-marker';
-      userMarkerRef.current = new maplibregl.Marker({
-        element: el
-      })
+      userMarkerRef.current = new maplibregl.Marker({ element: el })
         .setLngLat([coords.lng, coords.lat])
         .addTo(map);
     } else {
@@ -109,56 +109,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     }
   }, [coords]);
 
-  // personal aura around user
-useEffect(() => {
-  const map = mapRef.current;
-  if (!map || !coords) return;
-
-  // ha nincs mood szín, távolítsuk el az aurát
-  if (!personalMood || !personalMood.color || personalMood.total === 0) {
-    if (personalAuraRef.current) {
-      personalAuraRef.current.remove();
-      personalAuraRef.current = null;
-    }
-    return;
-  }
-
-  const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
-
-  if (!personalAuraRef.current) {
-    // létrehozzuk a marker elementet
-    const container = document.createElement('div');
-    container.className = 'personal-aura';
-
-    const inner = document.createElement('div');
-    inner.className = 'personal-aura-inner';
-    container.appendChild(inner);
-
-    inner.style.setProperty('--personal-color', personalMood.color);
-    inner.style.opacity = String(opacity);
-
-    const marker = new maplibregl.Marker({
-      element: container
-    })
-      .setLngLat([coords.lng, coords.lat])
-      .addTo(map);
-
-    personalAuraRef.current = marker;
-  } else {
-    // frissítjük a meglévő aurát
-    const marker = personalAuraRef.current;
-    marker.setLngLat([coords.lng, coords.lat]);
-
-    const el = marker.getElement().querySelector('.personal-aura-inner');
-    if (el) {
-      el.style.setProperty('--personal-color', personalMood.color);
-      el.style.opacity = String(opacity);
-    }
-  }
-}, [coords, personalMood]);
-
-
-  // show pulses (new events)
+  // pulses – rövid ideig villanó karikák
   useEffect(() => {
     if (!mapRef.current || !pulses || pulses.length === 0) return;
     const map = mapRef.current;
@@ -188,26 +139,60 @@ useEffect(() => {
 
       setTimeout(() => {
         marker.remove();
-      }, 6000);
+      }, 5000);
     });
   }, [pulses]);
 
-  // zoom controls
+  // GRID AURÁK – mindenki látja, ami a viewporton belül van
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // előző cella-markerek törlése
+    gridMarkersRef.current.forEach((m) => m.remove());
+    gridMarkersRef.current = [];
+
+    if (!gridCells || gridCells.length === 0) return;
+
+    gridCells.forEach((cell) => {
+      const { lat, lng, color, intensity } = cell;
+      if (
+        typeof lat !== 'number' ||
+        typeof lng !== 'number' ||
+        !color
+      ) return;
+
+      const el = document.createElement('div');
+      el.className = 'grid-aura';
+      el.style.setProperty('--grid-color', color);
+      // kicsit erősebb, de intensity-től függ
+      const baseOpacity = 0.35;
+      const extra = 0.55 * (intensity || 0);
+      el.style.opacity = String(baseOpacity + extra);
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      gridMarkersRef.current.push(marker);
+    });
+  }, [gridCells]);
+
+  // zoom + back-to-me
+
   function handleZoomIn() {
     if (!mapRef.current) return;
     mapRef.current.zoomIn();
   }
-  
+
   function handleZoomOut() {
     if (!mapRef.current) return;
     mapRef.current.zoomOut();
   }
 
-  // Vissza a saját pozícióhoz
   function handleBackToMe() {
     const map = mapRef.current;
     if (!map || !coords) return;
-    
     map.flyTo({
       center: [coords.lng, coords.lat],
       zoom: 12,
@@ -222,13 +207,12 @@ useEffect(() => {
         <button onClick={handleZoomIn}>+</button>
         <button onClick={handleZoomOut}>−</button>
       </div>
-      
-      {/* Vissza hozzám gomb */}
+
       {coords && (
-        <button 
+        <button
           className="back-to-me-btn"
           onClick={handleBackToMe}
-          title="Vissza a saját helyemhez"
+          title="Back to my location"
         >
           📍
         </button>
