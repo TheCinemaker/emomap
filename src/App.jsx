@@ -56,6 +56,7 @@ export default function App() {
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
   const personalMood = usePersonalMood(coords, SESSION_ID);
+  const AreaMood = useAreaMood(coords, SESSION_ID);
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
