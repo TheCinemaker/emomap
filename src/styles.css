@@ -102,7 +102,7 @@ button {
   pointer-events: none;
 }
 
-/* vote confirmation */
+/* 🆕 CSUPÁN EZ AZ EGY ÚJ CSS - vote confirmation */
 .emotion-button.voted {
   background: rgba(34, 197, 94, 0.2) !important;
   border-color: #22c55e !important;
@@ -130,7 +130,7 @@ button {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(6px);
-  z-index: 5;
+  z-index: 4;
 }
 
 /* PULSE MARKER */
@@ -203,7 +203,7 @@ button {
   cursor: pointer;
 }
 
-/* Back to me */
+/* Vissza hozzám gomb */
 .back-to-me-btn {
   position: absolute;
   right: 8px;
@@ -234,24 +234,28 @@ button {
   transform: scale(0.95);
 }
 
-/* Mood aura – viewport közepén lélegző „város hangulat” */
+.map-container canvas {
+  filter: saturate(0.7) brightness(0.6) contrast(1.2);
+}
+
+/* MOOD AURA – város hangulata a viewport közepén */
 .mood-aura {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 2;
+  z-index: 2; /* map fölött, overlay alatt */
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .mood-aura-inner {
-  width: 45vmin;
-  height: 45vmin;
+  width: 60vmin;
+  height: 60vmin;
   border-radius: 999px;
   background: radial-gradient(
     circle,
-    var(--mood-color, rgba(56, 189, 248, 0.6)) 0%,
+    var(--mood-color, rgba(56, 189, 248, 0.5)) 0%,
     transparent 70%
   );
   mix-blend-mode: screen;
@@ -267,10 +271,41 @@ button {
   }
 }
 
-/* Vote highlight */
-.emotion-button.voted {
-  background: var(--emotion-color, rgba(255, 255, 255, 0.1)) !important;
-  border-color: var(--emotion-color, #fff) !important;
-  box-shadow: 0 0 12px var(--emotion-color, #fff);
-  transform: scale(0.95);
+/* hogy biztosan felül legyen minden fölött a status-overlay */
+.status-overlay {
+  z-index: 5;
+}
+
+/* SAJÁT AURA – a user-marker körül */
+.personal-aura {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.personal-aura-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle,
+    var(--personal-color, rgba(56, 189, 248, 0.8)) 0%,
+    rgba(56, 189, 248, 0.4) 35%,
+    transparent 75%
+  );
+  mix-blend-mode: screen;
+  animation: personal-breathe 4s ease-in-out infinite alternate;
+}
+
+@keyframes personal-breathe {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
 }
