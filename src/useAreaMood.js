@@ -38,7 +38,18 @@ export function useAreaMood(bounds, sessionId) {
   });
 
   useEffect(() => {
-    if (!bounds) return;
+    if (!bounds) {
+      // Ha nincs bounds, reseteljük a mood-ot
+      setMood({
+        color: null,
+        intensity: 0,
+        total: 0,
+        loading: false,
+        error: null
+      });
+      return;
+    }
+    
     let cancelled = false;
 
     async function fetchMood() {
@@ -117,7 +128,7 @@ export function useAreaMood(bounds, sessionId) {
     }
 
     fetchMood();
-    const id = setInterval(fetchMood, 15000); // 15 mp-enként frissítünk
+    const id = setInterval(fetchMood, 15000);
 
     return () => {
       cancelled = true;
@@ -126,4 +137,5 @@ export function useAreaMood(bounds, sessionId) {
   }, [bounds, sessionId]);
 
   return mood;
+
 }
