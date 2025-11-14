@@ -237,3 +237,43 @@ button {
 .map-container canvas {
   filter: saturate(0.7) brightness(0.6) contrast(1.2);
 }
+
+/* MOOD AURA – város hangulata a viewport közepén */
+.mood-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2; /* map fölött, overlay alatt */
+}
+
+.mood-aura-inner {
+  position: absolute;
+  width: 60vmin;
+  height: 60vmin;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: radial-gradient(
+    circle,
+    var(--mood-color, rgba(56, 189, 248, 0.5)) 0%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  animation: mood-breathe 6s ease-in-out infinite alternate;
+}
+
+@keyframes mood-breathe {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+/* hogy biztosan felül legyen minden fölött a status-overlay */
+.status-overlay {
+  z-index: 5;
+}
+
