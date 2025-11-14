@@ -5,6 +5,8 @@ import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
+import { useAreaMood } from './useAreaMood';
+
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
@@ -37,7 +39,6 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
 
-  // 🆕 CSUPÁN 2 ÚJ STATE - semmi extra
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
 
@@ -52,6 +53,7 @@ export default function App() {
   }, []);
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
+  const areaMood = useAreaMood(mapBounds, SESSION_ID);
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
@@ -193,12 +195,24 @@ export default function App() {
 
       <main className="app-main">
         <div className="map-wrapper">
-          <MapView
-            coords={coords}
-            viewCenter={viewCenter}
-            onBoundsChange={setMapBounds}
-            pulses={pulseBatch}
-          />
+  <MapView
+    coords={coords}
+    viewCenter={viewCenter}
+    onBoundsChange={setMapBounds}
+    pulses={pulseBatch}
+  />
+
+  {areaMood.color && (
+    <div className="mood-aura">
+      <div
+        className="mood-aura-inner"
+        style={{
+          '--mood-color': areaMood.color,
+          opacity: 0.25 + 0.5 * areaMood.intensity
+        }}
+      />
+    </div>
+  )}
           <div className="status-overlay">
             <div>
               <strong>User:</strong> {userId || 'loading...'}
