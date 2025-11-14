@@ -3,9 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { EMOTIONS } from './emotions';
 import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
-import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
-import { usePersonalMood } from './usePersonalMood';
 import { useAreaMood } from './useAreaMood';
 
 const SESSION_ID = 'global';
@@ -29,12 +27,11 @@ export default function App() {
   const [gpsAllowed, setGpsAllowed] = useState(null);
   const [coords, setCoords] = useState(null);
   const [lastVoteAt, setLastVoteAt] = useState(null);
-  const [events, setEvents] = useState([]);
 
   const [mapBounds, setMapBounds] = useState(null);
-  const [pulseBatch, setPulseBatch] = useState([]);
   const [viewCenter, setViewCenter] = useState(null);
 
+  const [pulseBatch, setPulseBatch] = useState([]); // csak lokális pulzusok
   const [searchTerm, setSearchTerm] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
@@ -42,32 +39,19 @@ export default function App() {
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
 
+  // idő frissítés (rate limit kijelzéshez)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-    };
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  const stats = useEmotionsStats(mapBounds, SESSION_ID);
-  const personalMood = usePersonalMood(coords, SESSION_ID);
-  const areaMood = useAreaMood(mapBounds, SESSION_ID); // 🆕 EZ HIÁNYZOTT!
-
-  useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
-    setPulseBatch((prev) => {
-      const merged = [...prev, ...batch];
-      return merged.slice(-100);
-    });
-  });
-
+  // userId init
   useEffect(() => {
     const id = getOrCreateUserId();
     setUserId(id);
   }, []);
 
+  // GPS kérés
   useEffect(() => {
     if (!('geolocation' in navigator)) {
       setGpsAllowed(false);
@@ -91,13 +75,21 @@ export default function App() {
     );
   }, []);
 
+  // stat + aura (DB-ből, 15 perc)
+  const stats = useEmotionsStats(mapBounds, SESSION_ID);
+  const areaMood = useAreaMood(mapBounds, SESSION_ID);
+
+  // rate limit
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
     return now - lastVoteAt;
   }, [lastVoteAt, now]);
 
   const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
+  const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
+  const remainingSec = Math.ceil(remainingMs / 1000);
 
+  // SZAVAZÁS – csak saját pozíción, csak 2 percenként
   async function handleVote(emotionId) {
     if (!canVote) return;
     if (!coords || !userId) return;
@@ -121,21 +113,27 @@ export default function App() {
         return;
       }
 
-      const inserted = data?.[0];
-      console.log('EVENT STORED:', inserted || event);
+      const inserted = data?.[0] || event;
+      const nowTs = Date.now();
 
-      setEvents((prev) => [...prev, inserted || event]);
-      setLastVoteAt(Date.now());
-      
+      setLastVoteAt(nowTs);
       setLastVotedEmotion(emotionId);
       setTimeout(() => setLastVotedEmotion(null), 1000);
 
-      setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
+      // LOKÁLIS PULSE – csak saját usernél, 1 batch, 5 mp-ig él a MapView-ben
+      const pulse = {
+        ...inserted,
+        lat: coords.lat,
+        lng: coords.lng,
+        _localId: `pulse_${nowTs}_${Math.random().toString(36).slice(2)}`
+      };
+      setPulseBatch([pulse]);
     } catch (err) {
       console.error('Unexpected insert error:', err);
     }
   }
 
+  // város keresés
   async function handleCitySearch(e) {
     e.preventDefault();
     const q = searchTerm.trim();
@@ -150,9 +148,7 @@ export default function App() {
         encodeURIComponent(q);
 
       const res = await fetch(url, {
-        headers: {
-          'Accept-Language': 'en'
-        }
+        headers: { 'Accept-Language': 'en' }
       });
 
       if (!res.ok) throw new Error('Search failed: ' + res.status);
@@ -183,9 +179,6 @@ export default function App() {
     }
   }
 
-  const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
-  const remainingSec = Math.ceil(remainingMs / 1000);
-
   return (
     <div className="app-root">
       <header className="app-header">
@@ -199,18 +192,17 @@ export default function App() {
             coords={coords}
             viewCenter={viewCenter}
             onBoundsChange={setMapBounds}
-            pulses={pulseBatch}
-            personalMood={personalMood} 
+            pulses={pulseBatch} // csak az aktuális kattintás
           />
 
-          {/* 🆕 Area Mood Aura */}
+          {/* 15 perces AURA – mindenki ugyanazt látja ugyanarra a viewport-ra */}
           {areaMood && areaMood.color && (
             <div className="mood-aura">
               <div
                 className="mood-aura-inner"
                 style={{
                   '--mood-color': areaMood.color,
-                  opacity: 0.25 + 0.5 * areaMood.intensity
+                  opacity: 0.3 + 0.5 * areaMood.intensity
                 }}
               />
             </div>
@@ -237,24 +229,10 @@ export default function App() {
                 : `wait ${remainingSec}s`}
             </div>
             <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
-              <strong>Area:</strong>{' '}
+              <strong>Area (15min):</strong>{' '}
               {stats.loading
                 ? 'loading...'
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
-            </div>
-            
-            {/* 🆕 Mood Debug Info */}
-            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>Area Mood:</strong>{' '}
-              {areaMood && areaMood.color
-                ? `${areaMood.color} · total ${areaMood.total}`
-                : 'no mood data'}
-            </div>
-            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>My Mood:</strong>{' '}
-              {personalMood && personalMood.color
-                ? `${personalMood.color} · total ${personalMood.total}`
-                : 'no data yet'}
             </div>
 
             <form
