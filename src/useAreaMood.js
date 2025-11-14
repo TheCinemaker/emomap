@@ -3,18 +3,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import { EMOTIONS } from './emotions';
 
-// emotion -> color map az emotions.js alapján
-const COLOR_MAP = EMOTIONS.reduce((acc, e) => {
-  acc[e.id] = e.color;
-  return acc;
-}, {});
-
+// segéd: hex → {r,g,b}
 function hexToRgb(hex) {
-  let h = hex.replace('#', '');
-  if (h.length === 3) {
-    h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-  }
-  const num = parseInt(h, 16);
+  const cleaned = hex.replace('#', '');
+  const num = parseInt(cleaned, 16);
   return {
     r: (num >> 16) & 255,
     g: (num >> 8) & 255,
@@ -22,110 +14,139 @@ function hexToRgb(hex) {
   };
 }
 
-/**
- * bounds + sessionId alapján:
- *  - lekéri az adott terület ÖSSZES eseményét (max 1000)
- *  - emotion count
- *  - súlyozott átlag szín + intenzitás
- */
+// segéd: {r,g,b} → hex
+function rgbToHex({ r, g, b }) {
+  const toHex = (v) => v.toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+const EMOTION_COLOR_MAP = EMOTIONS.reduce((acc, e) => {
+  acc[e.id] = e.color;
+  return acc;
+}, {});
+
 export function useAreaMood(bounds, sessionId) {
-  const [mood, setMood] = useState({
+  const [state, setState] = useState({
+    loading: false,
     color: null,
     intensity: 0,
-    total: 0,
-    loading: false,
-    error: null
+    total: 0
   });
 
   useEffect(() => {
     if (!bounds) return;
+
     let cancelled = false;
 
     async function fetchMood() {
-      setMood(prev => ({ ...prev, loading: true, error: null }));
+      setState((s) => ({ ...s, loading: true }));
 
-      console.log('[AreaMood] bounds:', bounds);
+      try {
+        const now = new Date();
+        const fifteenAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-      const { data, error } = await supabase
-        .from('emotions')
-        .select('emotion, lat, lng')
-        .eq('session_id', sessionId)
-        .gte('lat', bounds.south)
-        .lte('lat', bounds.north)
-        .gte('lng', bounds.west)
-        .lte('lng', bounds.east)
-        .limit(1000); // MVP
+        let query = supabase
+          .from('emotions')
+          .select('emotion, lat, lng, inserted_at', { count: 'exact', head: false })
+          .eq('session_id', sessionId)
+          .gte('inserted_at', fifteenAgo.toISOString())
+          .gte('lat', bounds.south)
+          .lte('lat', bounds.north)
+          .gte('lng', bounds.west)
+          .lte('lng', bounds.east);
 
-      if (cancelled) return;
+        const { data, error } = await query;
 
-      if (error) {
-        console.error('[AreaMood] error:', error);
-        setMood(prev => ({
-          ...prev,
+        if (cancelled) return;
+
+        if (error) {
+          console.error('useAreaMood error:', error);
+          setState({
+            loading: false,
+            color: null,
+            intensity: 0,
+            total: 0
+          });
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          setState({
+            loading: false,
+            color: null,
+            intensity: 0,
+            total: 0
+          });
+          return;
+        }
+
+        // számlálás emotion szerint
+        const counts = {};
+        data.forEach((row) => {
+          if (!row.emotion) return;
+          counts[row.emotion] = (counts[row.emotion] || 0) + 1;
+        });
+
+        const total = Object.values(counts).reduce((sum, v) => sum + v, 0);
+        if (total === 0) {
+          setState({
+            loading: false,
+            color: null,
+            intensity: 0,
+            total: 0
+          });
+          return;
+        }
+
+        // súlyozott szín keverés
+        let accRgb = { r: 0, g: 0, b: 0 };
+
+        Object.entries(counts).forEach(([emotionId, count]) => {
+          const colorHex = EMOTION_COLOR_MAP[emotionId];
+          if (!colorHex) return;
+          const rgb = hexToRgb(colorHex);
+          const weight = count / total;
+          accRgb.r += rgb.r * weight;
+          accRgb.g += rgb.g * weight;
+          accRgb.b += rgb.b * weight;
+        });
+
+        const mixedColor = rgbToHex({
+          r: Math.round(accRgb.r),
+          g: Math.round(accRgb.g),
+          b: Math.round(accRgb.b)
+        });
+
+        // intenzitás: minél több katt az utolsó 15 percben, annál erősebb
+        const intensity = Math.min(1, total / 20); // 0..1
+
+        setState({
           loading: false,
-          error: error.message || 'Error loading mood'
-        }));
-        return;
-      }
-
-      console.log('[AreaMood] rows:', data?.length);
-
-      const counts = {};
-      for (const row of data || []) {
-        if (!row.emotion) continue;
-        counts[row.emotion] = (counts[row.emotion] || 0) + 1;
-      }
-
-      const total = Object.values(counts).reduce((a, v) => a + v, 0);
-      if (!total) {
-        setMood({
+          color: mixedColor,
+          intensity,
+          total
+        });
+      } catch (err) {
+        if (cancelled) return;
+        console.error('useAreaMood unexpected error:', err);
+        setState({
+          loading: false,
           color: null,
           intensity: 0,
-          total: 0,
-          loading: false,
-          error: null
+          total: 0
         });
-        return;
       }
-
-      let sumR = 0, sumG = 0, sumB = 0;
-
-      for (const [emotion, count] of Object.entries(counts)) {
-        const hex = COLOR_MAP[emotion];
-        if (!hex) continue;
-        const { r, g, b } = hexToRgb(hex);
-        sumR += r * count;
-        sumG += g * count;
-        sumB += b * count;
-      }
-
-      const r = Math.round(sumR / total);
-      const g = Math.round(sumG / total);
-      const b = Math.round(sumB / total);
-      const color = `rgb(${r}, ${g}, ${b})`;
-
-      // intenzitás 0..1 (kb. 30 pulse ~ max glow)
-      const intensity = Math.min(1, total / 30);
-
-      console.log('[AreaMood] mood:', { color, total, intensity });
-
-      setMood({
-        color,
-        intensity,
-        total,
-        loading: false,
-        error: null
-      });
     }
 
+    // első hívás + polling (pl. 5 mp-ként)
     fetchMood();
-    const id = setInterval(fetchMood, 15000); // 15 mp-enként frissítünk
+    const interval = setInterval(fetchMood, 5000);
 
     return () => {
       cancelled = true;
-      clearInterval(id);
+      clearInterval(interval);
     };
-  }, [bounds, sessionId]);
+  }, [sessionId, JSON.stringify(bounds)]);
 
-  return mood;
+  return state;
 }
