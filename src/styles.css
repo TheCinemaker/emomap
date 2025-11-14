@@ -144,67 +144,41 @@ button {
 }
 
 .pulse-marker {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--pulse-color);
-  border: 3px solid var(--pulse-color);
-  box-shadow: 
-    0 0 20px var(--pulse-color),
-    0 0 40px var(--pulse-color);
-  animation: cyberpunk-pulse 5s ease-out forwards;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background-color: var(--pulse-color);
+  border: 2px solid var(--pulse-color, #ffffff);
+  box-shadow: 0 0 20px var(--pulse-color, #ffffff);
+  animation: pulse-ring 5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
 }
 
-@keyframes cyberpunk-pulse {
+@keyframes pulse-ring {
   0% {
-    transform: scale(0.3);
-    opacity: 1;
-    box-shadow: 
-      0 0 0 0 var(--pulse-color),
-      0 0 0 0 var(--pulse-color);
+    transform: scale(0.33);
+    opacity: 0.9;
   }
   50% {
-    opacity: 0.8;
-    box-shadow: 
-      0 0 0 20px rgba(255, 255, 255, 0),
-      0 0 0 40px rgba(255, 255, 255, 0);
+    opacity: 0.5;
+  }
+  80% {
+    opacity: 0.1;
   }
   100% {
-    transform: scale(4);
+    transform: scale(3.5);
     opacity: 0;
-    box-shadow: 
-      0 0 0 40px rgba(255, 255, 255, 0),
-      0 0 0 80px rgba(255, 255, 255, 0);
+    box-shadow: none;
   }
 }
 
 /* user location marker */
 .user-marker {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: #3b82f6;
-  border: 3px solid rgba(59, 130, 246, 0.5);
-  box-shadow: 
-    0 0 0 4px rgba(59, 130, 246, 0.3),
-    0 0 20px rgba(59, 130, 246, 0.5);
-  animation: user-pulse 2s ease-in-out infinite;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #24a0ff;
+  box-shadow: 0 0 0 4px rgba(36, 160, 255, 0.5);
 }
-
-@keyframes user-pulse {
-  0%, 100% {
-    transform: scale(1);
-    box-shadow: 
-      0 0 0 4px rgba(59, 130, 246, 0.3),
-      0 0 20px rgba(59, 130, 246, 0.5);
-  }
-  50% {
-    transform: scale(1.1);
-    box-shadow: 
-      0 0 0 6px rgba(59, 130, 246, 0.4),
-      0 0 30px rgba(59, 130, 246, 0.7);
-  }
-} /* HIÁNYZÓ ZÁRÓ ZÁRÓJEL ITT VOLT */
 
 /* zoom controls */
 .map-zoom-controls {
@@ -230,20 +204,6 @@ button {
 }
 
 /* Cyberpunk overlay */
-.cyberpunk-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 20%, rgba(168, 85, 247, 0.15), transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.1), transparent 50%),
-    radial-gradient(circle at 40% 70%, rgba(56, 189, 248, 0.1), transparent 50%);
-  mix-blend-mode: overlay;
-  opacity: 0.6;
-  z-index: 2;
-}
-
-/* Additional cyberpunk effect */
 .map-wrapper::before {
   content: "";
   position: absolute;
@@ -259,5 +219,5 @@ button {
 }
 
 .map-container canvas {
-  filter: saturate(0.8) brightness(0.7) contrast(1.3) hue-rotate(10deg);
+  filter: saturate(0.7) brightness(0.6) contrast(1.2);
 }
