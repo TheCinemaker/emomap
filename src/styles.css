@@ -53,10 +53,9 @@ button {
 
 .app-main {
   flex: 1;
-  padding: 12px;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 
 .app-footer {
@@ -110,13 +109,6 @@ button {
   pointer-events: none;
 }
 
-.app-main {
-  flex: 1;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
 .map-wrapper {
   flex: 1;
   min-height: 0;
@@ -128,25 +120,7 @@ button {
   inset: 0;
 }
 
-.app-main {
-  flex: 1;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.map-wrapper {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-}
-
-.map-container {
-  position: absolute;
-  inset: 0;
-}
-
-/* status overlay, már megvan nálad */
+/* status overlay */
 .status-overlay {
   position: absolute;
   left: 8px;
@@ -156,13 +130,12 @@ button {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(6px);
+  z-index: 4;
 }
 
-/* PULSE MARKER – 5s colorful pulse */
-
-/* PULSE MARKER – brutálisan látható színes gyűrű 5s-ig */
+/* PULSE MARKER */
 .pulse-marker-container {
-  width: 150px; /* A konténer mérete, amiben az animáció zajlik */
+  width: 150px;
   height: 150px;
   display: flex;
   justify-content: center;
@@ -171,47 +144,69 @@ button {
 }
 
 .pulse-marker {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  background-color: var(--pulse-color);
-  border: 2px solid var(--pulse-color, #ffffff);
-  box-shadow: 0 0 20px var(--pulse-color, #ffffff);
-  animation: pulse-ring 5s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
-  will-change: transform, opacity;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--pulse-color);
+  border: 3px solid var(--pulse-color);
+  box-shadow: 
+    0 0 20px var(--pulse-color),
+    0 0 40px var(--pulse-color);
+  animation: cyberpunk-pulse 5s ease-out forwards;
 }
 
-@keyframes pulse-ring {
-
+@keyframes cyberpunk-pulse {
   0% {
-    transform: scale(0.33);
-    opacity: 0.9;
+    transform: scale(0.3);
+    opacity: 1;
+    box-shadow: 
+      0 0 0 0 var(--pulse-color),
+      0 0 0 0 var(--pulse-color);
   }
-    50% {
-    opacity: 0.5;
-  }
-  80% {
-    opacity: 0.1;
+  50% {
+    opacity: 0.8;
+    box-shadow: 
+      0 0 0 20px rgba(255, 255, 255, 0),
+      0 0 0 40px rgba(255, 255, 255, 0);
   }
   100% {
-    transform: scale(3.5);
+    transform: scale(4);
     opacity: 0;
-    box-shadow: none; /* A végén levesszük az árnyékot a jobb teljesítményért */
+    box-shadow: 
+      0 0 0 40px rgba(255, 255, 255, 0),
+      0 0 0 80px rgba(255, 255, 255, 0);
   }
 }
 
-/* user location marker – fix "you are here" pötty */
-
+/* user location marker */
 .user-marker {
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: #24a0ff;
-  box-shadow: 0 0 0 4px rgba(36, 160, 255, 0.5);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 3px solid rgba(59, 130, 246, 0.5);
+  box-shadow: 
+    0 0 0 4px rgba(59, 130, 246, 0.3),
+    0 0 20px rgba(59, 130, 246, 0.5);
+  animation: user-pulse 2s ease-in-out infinite;
 }
 
-/* zoom controls */
+@keyframes user-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 
+      0 0 0 4px rgba(59, 130, 246, 0.3),
+      0 0 20px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 
+      0 0 0 6px rgba(59, 130, 246, 0.4),
+      0 0 30px rgba(59, 130, 246, 0.7);
+  }
+} /* HIÁNYZÓ ZÁRÓ ZÁRÓJEL ITT VOLT */
 
+/* zoom controls */
 .map-zoom-controls {
   position: absolute;
   right: 8px;
@@ -234,14 +229,21 @@ button {
   cursor: pointer;
 }
 
-.map-wrapper {
-  flex: 1;
-  min-height: 0;
-  position: relative;
-  overflow: hidden;
+/* Cyberpunk overlay */
+.cyberpunk-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(168, 85, 247, 0.15), transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(34, 197, 94, 0.1), transparent 50%),
+    radial-gradient(circle at 40% 70%, rgba(56, 189, 248, 0.1), transparent 50%);
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+  z-index: 2;
 }
 
-/* Cyberpunk overlay a map fölött */
+/* Additional cyberpunk effect */
 .map-wrapper::before {
   content: "";
   position: absolute;
@@ -257,6 +259,5 @@ button {
 }
 
 .map-container canvas {
-  filter: saturate(0.7) brightness(0.6) contrast(1.2);
+  filter: saturate(0.8) brightness(0.7) contrast(1.3) hue-rotate(10deg);
 }
-
