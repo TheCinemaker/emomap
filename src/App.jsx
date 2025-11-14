@@ -5,7 +5,8 @@ import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
-import { useAreaMood } from './useAreaMood';
+import { usePersonalMood } from './usePersonalMood';
+
 
 
 const SESSION_ID = 'global';
@@ -53,7 +54,7 @@ export default function App() {
   }, []);
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
-  const areaMood = useAreaMood(mapBounds, SESSION_ID);
+  const personalMood = usePersonalMood(coords, SESSION_ID);
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
@@ -200,6 +201,7 @@ export default function App() {
     viewCenter={viewCenter}
     onBoundsChange={setMapBounds}
     pulses={pulseBatch}
+    personalMood={personalMood} 
   />
 
   {areaMood && areaMood.color && (
@@ -209,10 +211,10 @@ export default function App() {
       style={{
         '--mood-color': areaMood.color,
         opacity: 0.25 + 0.5 * areaMood.intensity
-        }}
-      />
-    </div>
-  )}
+      }}
+    />
+  </div>
+)}
           <div className="status-overlay">
             <div>
               <strong>User:</strong> {userId || 'loading...'}
@@ -239,11 +241,18 @@ export default function App() {
                 ? 'loading...'
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
             </div>
+            
 <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
   <strong>Mood debug:</strong>{' '}
   {areaMood.color
     ? `${areaMood.color} · total ${areaMood.total}`
     : 'no mood data'}
+</div>
+<div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+  <strong>My mood:</strong>{' '}
+  {personalMood.color
+    ? `${personalMood.color} · total ${personalMood.total}`
+    : 'no data yet'}
 </div>
 
             <form
