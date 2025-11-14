@@ -133,7 +133,7 @@ button {
   z-index: 5;
 }
 
-/* PULSE MARKER – rövid flash a kattintásra */
+/* PULSE MARKER */
 .pulse-marker-container {
   width: 150px;
   height: 150px;
@@ -203,7 +203,7 @@ button {
   cursor: pointer;
 }
 
-/* Vissza hozzám gomb */
+/* Back to me */
 .back-to-me-btn {
   position: absolute;
   right: 8px;
@@ -234,34 +234,43 @@ button {
   transform: scale(0.95);
 }
 
-/* kicsit „game-like” mapa */
-.map-container canvas {
-  filter: saturate(0.8) brightness(0.7) contrast(1.25);
+/* Mood aura – viewport közepén lélegző „város hangulat” */
+.mood-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* GRID AURÁK – kb. 1 km-es körök, mindenki látja */
-.grid-aura {
-  width: 80px;   /* zoom 12-13 környékén ~1 km */
-  height: 80px;
+.mood-aura-inner {
+  width: 45vmin;
+  height: 45vmin;
   border-radius: 999px;
-  pointer-events: none;
   background: radial-gradient(
     circle,
-    var(--grid-color, rgba(56,189,248,0.9)) 0%,
-    rgba(56,189,248,0.4) 40%,
+    var(--mood-color, rgba(56, 189, 248, 0.6)) 0%,
     transparent 70%
   );
   mix-blend-mode: screen;
-  animation: grid-breathe 5s ease-in-out infinite alternate;
+  animation: mood-breathe 6s ease-in-out infinite alternate;
 }
 
-@keyframes grid-breathe {
+@keyframes mood-breathe {
   0% {
     transform: scale(0.9);
-    opacity: 0.6;
   }
   100% {
     transform: scale(1.1);
-    opacity: 1;
   }
+}
+
+/* Vote highlight */
+.emotion-button.voted {
+  background: var(--emotion-color, rgba(255, 255, 255, 0.1)) !important;
+  border-color: var(--emotion-color, #fff) !important;
+  box-shadow: 0 0 12px var(--emotion-color, #fff);
+  transform: scale(0.95);
 }
