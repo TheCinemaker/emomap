@@ -202,13 +202,13 @@ export default function App() {
     pulses={pulseBatch}
   />
 
-  {areaMood.color && (
-    <div className="mood-aura">
-      <div
-        className="mood-aura-inner"
-        style={{
-          '--mood-color': areaMood.color,
-          opacity: 0.25 + 0.5 * areaMood.intensity
+  {areaMood && areaMood.color && (
+  <div className="mood-aura">
+    <div
+      className="mood-aura-inner"
+      style={{
+        '--mood-color': areaMood.color,
+        opacity: 0.25 + 0.5 * areaMood.intensity
         }}
       />
     </div>
