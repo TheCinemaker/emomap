@@ -6,6 +6,7 @@ import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
 import { usePersonalMood } from './usePersonalMood';
+import { useAreaMood } from './useAreaMood';
 
 
 
