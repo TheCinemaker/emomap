@@ -201,7 +201,25 @@ button {
     animation: mood-breathe 6s ease-in-out infinite alternate;
 }
 
-/* ELTÁVOLÍTOTTUK: A régi, problémás, teljes képernyős .mood-aura definíciót. */
+/* MOOD GRID CELL - Az aggregált hangulat rácspontjainak konténere */
+.mood-grid-cell-container {
+    /* Szükséges a MapLibre Marker pontos középre illesztéséhez */
+    transform: translate(-50%, -50%); 
+    pointer-events: none;
+    z-index: 1; /* A pulzusok alá kerüljön (pulses z-index: 2-3) */
+}
+
+.mood-grid-cell-inner {
+    border-radius: 999px; 
+    /* A cella méretét a JS állítja be (pixelSize) */
+    background: radial-gradient(
+        circle,
+        var(--cell-color, rgba(255, 255, 255, 0.6)) 0%,
+        transparent 70%
+    );
+    mix-blend-mode: screen; /* Fényesebb, összeolvadó hatás */
+    transition: opacity 0.5s ease;
+}
 
 
 @keyframes mood-breathe {
