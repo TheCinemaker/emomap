@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 // JAVÍTVA: A MapLibre CSS importálását eltávolítva a build hiba elkerülése érdekében.
 // A stílusokat globálisan kell betölteni a HTML entry ponton.
+// A maplibregl-t globális objektumként olvassuk (a CDN-es betöltést feltételezve)
 const maplibregl = window.maplibregl || {};
 
 
@@ -30,6 +31,10 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     // Fontos ellenőrzés: ha a MapLibre nem töltődött be globálisan, várjunk.
     if (!maplibregl.Map || !mapContainerRef.current || mapRef.current) return;
 
+    // A térkép inicializálása: ha van coords, azonnal arra centrálunk.
+    const initialCenter = coords ? [coords.lng, coords.lat] : [19, 47];
+    const initialZoom = coords ? 10 : 4; 
+
     // MapLibre map creation
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
@@ -53,8 +58,8 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
           }
         ]
       },
-      center: [19, 47], // Default center (Hungary)
-      zoom: 4,
+      center: initialCenter, // Kezdeti középpont beállítva
+      zoom: initialZoom, // Kezdeti zoom beállítva
       attributionControl: false
     });
 
@@ -87,21 +92,22 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
       map.remove();
       mapRef.current = null;
     };
-  }, [onBoundsChange, onZoomChange]);
+  }, [onBoundsChange, onZoomChange, coords]); // Dependenciába beletesszük a coords-ot is
 
   // Center map on user coords or search center
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const target = viewCenter || coords;
-    if (!target) return;
+    
+    // Csak akkor ugrunk, ha viewCenter (keresés) változott
+    if (!viewCenter) return;
 
     map.flyTo({
-      center: [target.lng, target.lat],
-      zoom: viewCenter?.zoom || 10,
+      center: [viewCenter.lng, viewCenter.lat],
+      zoom: viewCenter.zoom || 10,
       speed: 0.9
     });
-  }, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
+  }, [viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
   // Show user position as a blue dot (User Marker)
   useEffect(() => {
