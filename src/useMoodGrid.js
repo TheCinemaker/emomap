@@ -2,11 +2,8 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 
-// kb. 1 km rácsdeg – ~0.009°, kerekítsük 0.01-re
-// Megjegyzés: Ez a fix érték csak egy szűk zoom tartományban optimális.
-// Nagyobb skálázhatósághoz ezt az értéket a térkép ZOOM szintjétől függően kellene dinamikusan változtatni!
-const CELL_SIZE_DEG = 0.01; 
-const MAX_FETCH_LIMIT = 20000; // Maximális adatpont, amit a kliens feldolgozhat a fagyás nélkül
+// A MAX_FETCH_LIMIT a böngésző védelmére szolgál.
+const MAX_FETCH_LIMIT = 20000; 
 
 // színek RGB-ben – az emotions.js hex-jeiből (ez a definíció OK)
 const EMOTION_RGB = {
@@ -19,14 +16,36 @@ const EMOTION_RGB = {
   hype:       [168, 85, 247],  // #a855f7
 };
 
-export function useMoodGrid(bounds, sessionId) {
+/**
+ * Dinamikusan kiszámítja a rácsméretet a zoom szint alapján.
+ * Cél: Nagy zoomnál (pl. 14+) 0.005 fokos (kb. 500m) rácsokat kapjunk,
+ * alacsony zoomnál (pl. 4-es zoom, földgömb) pedig nagy, 10-20 fokos rácsokat.
+ * A formula biztosítja, hogy minden rács egy nagyjából azonos, 
+ * kezelhető területet fedjen le a képernyőn.
+ * * @param {number} zoomLevel A MapLibre aktuális zoom szintje
+ * @returns {number} A rács mérete fokokban (CELL_SIZE_DEG)
+ */
+function calculateCellSize(zoomLevel) {
+    // Alap rácsméret (pl. 1 km fokban, ~10-es zoom szintnél)
+    const baseSizeDeg = 0.01; 
+    
+    // Faktor: minél kisebb a zoom, annál nagyobb cellát kell használni
+    // p.l. zoom 10 -> size 0.01; zoom 4 -> size 0.01 * 2^(10-4) = 0.64 fok!
+    const size = baseSizeDeg * Math.pow(2, 10 - zoomLevel); 
+    
+    // Korlátozzuk a maximális méretet (pl. 10 fok) és a minimális méretet (pl. 0.005 fok)
+    return Math.max(0.005, Math.min(10, size));
+}
+
+
+export function useMoodGrid(bounds, sessionId, mapZoom) {
   const [cells, setCells] = useState([]);
   const [loading, setLoading] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [warning, setWarning] = useState(null);
 
   useEffect(() => {
-    if (!bounds) return;
+    if (!bounds || mapZoom === undefined) return;
 
     const { north, south, east, west } = bounds;
     if (
@@ -37,6 +56,11 @@ export function useMoodGrid(bounds, sessionId) {
     ) {
       return;
     }
+    
+    // ✅ DINAMIKUS RÁCSMÉRET KISZÁMÍTÁSA
+    const cellSizeDeg = calculateCellSize(mapZoom);
+    console.log(`[MoodGrid] Zoom: ${mapZoom.toFixed(1)}, Cell Size: ${cellSizeDeg.toFixed(4)} deg`);
+
 
     let cancelled = false;
 
@@ -48,16 +72,16 @@ export function useMoodGrid(bounds, sessionId) {
         // csak az elmúlt 24h
         const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-        const { data, error, count } = await supabase
+        // ⚠️ FIGYELEM: A MapLibre nem támogatja a szerver oldali aggregációt, 
+        // így minden pontot le kell kérdezni. Ezért kell a limit és a zoom-függő rács.
+        const { data, error } = await supabase
           .from('emotions')
-          .select('emotion, lat, lng, inserted_at', { count: 'exact', head: false })
-          // ❌ ELTÁVOLÍTVA: .eq('session_id', sessionId) - MOST MÁR KÖZÖSSÉGI ADAT!
+          .select('emotion, lat, lng, inserted_at')
           .gte('inserted_at', since)
           .gte('lat', south)
           .lte('lat', north)
           .gte('lng', west)
           .lte('lng', east)
-           // ✅ BIZTONSÁGI LIMIT BEÁLLÍTVA
            .limit(MAX_FETCH_LIMIT); 
 
         if (error) {
@@ -89,9 +113,9 @@ export function useMoodGrid(bounds, sessionId) {
           const lng = typeof row.lng === 'number' ? row.lng : Number(row.lng);
           if (Number.isNaN(lat) || Number.isNaN(lng)) continue;
 
-          // A cella koordinátáinak meghatározása a CELL_SIZE_DEG alapján
-          const gx = Math.floor(lat / CELL_SIZE_DEG);
-          const gy = Math.floor(lng / CELL_SIZE_DEG);
+          // A cella koordinátáinak meghatározása a DINAMIKUS CELL_SIZE_DEG alapján
+          const gx = Math.floor(lat / cellSizeDeg);
+          const gy = Math.floor(lng / cellSizeDeg);
           const key = `${gx}_${gy}`;
 
           let cell = grid.get(key);
@@ -149,8 +173,8 @@ export function useMoodGrid(bounds, sessionId) {
             color,
             total,
             intensity,
-            // Szükséges a rácsrajzoláshoz a méret is
-               size: CELL_SIZE_DEG, 
+            // ✅ Hozzáadtuk a rácsméretet a cellához a MapView-beli méretezéshez
+               size: cellSizeDeg, 
                key: `${lat}_${lng}`
           });
         }
@@ -170,7 +194,7 @@ export function useMoodGrid(bounds, sessionId) {
       }
     }
 
-    // A polling továbbra is marad, de a lekérdezés most már limitált
+    // A polling továbbra is marad
     load();
     const interval = setInterval(load, 10000); // 10 másodpercenként frissít
 
@@ -178,7 +202,7 @@ export function useMoodGrid(bounds, sessionId) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [JSON.stringify(bounds)]); // A sessionId már nem kell, mivel közösségi adatról van szó
+  }, [JSON.stringify(bounds), mapZoom]); // ✅ Zoom szint figyelése
 
   // Visszaadjuk a figyelmeztetést is
   return { cells, loading, totalPoints, warning };
