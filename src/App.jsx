@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { EMOTIONS } from './emotions';
 import { supabase } from './supabaseClient';
@@ -6,7 +7,8 @@ import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
 import { usePersonalMood } from './usePersonalMood';
 import { useAreaMood } from './useAreaMood';
-import { useGeolocation } from './useGeolocation'; // ✅ Folyamatos GPS importálva
+import { useGeolocation } from './useGeolocation';
+import { useMoodGrid } from './useMoodGrid'; 
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
@@ -26,11 +28,11 @@ function getOrCreateUserId() {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
-  // A régi GPS state-ek (gpsAllowed, coords) eltávolítva.
   const [lastVoteAt, setLastVoteAt] = useState(null);
   const [events, setEvents] = useState([]);
 
   const [mapBounds, setMapBounds] = useState(null);
+  const [mapZoom, setMapZoom] = useState(4); // Zoom szint state a térképről
   const [pulseBatch, setPulseBatch] = useState([]);
   const [viewCenter, setViewCenter] = useState(null);
 
@@ -41,9 +43,9 @@ export default function App() {
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
 
-  // ✅ ÚJ: Folyamatos GPS koordináták lekérése a useGeolocation hookkal
+  // Folyamatos GPS koordináták lekérése a useGeolocation hookkal
   const { coords, error: geoError } = useGeolocation();
-  const gpsAllowed = coords !== null && geoError === null; // Ezzel állítjuk be, engedélyezett-e a GPS
+  const gpsAllowed = coords !== null && geoError === null;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -58,6 +60,9 @@ export default function App() {
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
   const personalMood = usePersonalMood(coords, SESSION_ID);
   const areaMood = useAreaMood(mapBounds, SESSION_ID);
+  
+  // Átadjuk a zoom szintet a rács-aggregációnak a dinamikus méretezéshez
+  const moodGrid = useMoodGrid(mapBounds, SESSION_ID, mapZoom); 
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
@@ -70,9 +75,6 @@ export default function App() {
     const id = getOrCreateUserId();
     setUserId(id);
   }, []);
-
-  // ❌ Eltávolítva: A régi, egyszeri getCurrentPosition useEffect.
-  //    Ezt a useGeolocation hook vette át.
 
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
@@ -129,7 +131,7 @@ export default function App() {
     setSearchError(null);
 
     try {
-      // Nominatim keresés API hívás (OK)
+      // Nominatim keresés API hívás
       const url =
         'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
         encodeURIComponent(q);
@@ -182,14 +184,16 @@ export default function App() {
       <main className="app-main">
         <div className="map-wrapper">
           <MapView
-            coords={coords} // ✅ Folyamatosan frissül a useGeolocation-ból
+            coords={coords}
             viewCenter={viewCenter}
             onBoundsChange={setMapBounds}
+            onZoomChange={setMapZoom} // Frissíti a mapZoom state-et
             pulses={pulseBatch}
-            personalMood={personalMood} 
+            personalMood={personalMood}
+            moodGridCells={moodGrid.cells} // Átadja a rács adatokat
           />
 
-          {/* 🆕 Area Mood Aura (Globális/Viewport Aura) */}
+          {/* Area Mood Aura (Globális/Viewport Aura) */}
           {areaMood && areaMood.color && (
             <div className="mood-aura">
               <div
@@ -210,7 +214,7 @@ export default function App() {
               <strong>Location:</strong>{' '}
               {coords
                 ? `${coords.lat}, ${coords.lng}`
-                : geoError // ✅ GPS hibaüzenet megjelenítése
+                : geoError
                 ? `GPS Error: ${geoError}`
                 : 'requesting...'}
             </div>
@@ -227,9 +231,10 @@ export default function App() {
               {stats.loading
                 ? 'loading...'
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
+              {moodGrid.warning && <span style={{ color: '#f97316' }}> ({moodGrid.warning})</span>}
             </div>
             
-            {/* 🆕 Mood Debug Info */}
+            {/* Mood Debug Info */}
             <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
               <strong>Area Mood:</strong>{' '}
               {areaMood && areaMood.color
@@ -242,6 +247,15 @@ export default function App() {
                 ? `${personalMood.color} · total ${personalMood.total}`
                 : 'no data yet'}
             </div>
+            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
+              <strong>Grid Cells:</strong>{' '}
+              {moodGrid.loading
+                ? 'loading...'
+                : `${moodGrid.cells.length} cells (${moodGrid.totalPoints} points)`}
+              {' '}
+              <span style={{ opacity: 0.6 }}>Zoom: {mapZoom.toFixed(1)}</span>
+            </div>
+
 
             <form
               onSubmit={handleCitySearch}
