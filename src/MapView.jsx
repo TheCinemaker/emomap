@@ -1,9 +1,7 @@
 // src/MapView.jsx
 import React, { useEffect, useRef } from 'react';
-// JAVÍTVA: A direkt importok helyett a MapLibre-t a globális ablakból olvassuk be,
-// miután biztosítottuk a betöltését (ez a legmegbízhatóbb mód CDN használatakor).
-// A Build folyamat szempontjából, a vite.config.js nélkül ez a legbiztosabb megoldás.
-import 'https://cdn.jsdelivr.net/npm/maplibre-gl@4.1.0/dist/maplibre-gl.css';
+// JAVÍTVA: A MapLibre CSS importálását eltávolítva a build hiba elkerülése érdekében.
+// A stílusokat globálisan kell betölteni a HTML entry ponton.
 const maplibregl = window.maplibregl || {};
 
 
