@@ -4,20 +4,20 @@ import React, { useEffect, useRef } from 'react';
 // A maplibregl-t globális objektumként olvassuk (a CDN-es betöltést feltételezve)
 const maplibregl = window.maplibregl || {}; 
 
-
 const EMOTION_COLORS = {
-  happy: '#22c55e',     // green
-  bored: '#9ca3af',     // grey
-  stressed: '#ef4444',  // red
-  tired: '#facc15',     // yellow
-  motivated: '#0ea5e9', // blue
+  happy: '#22c55e',     // zöld
+  bored: '#9ca3af',     // szürke
+  stressed: '#ef4444',  // piros
+  tired: '#facc15',     // sárga
+  motivated: '#0ea5e9', // kék
   love: '#ec4899',      // pink
-  hype: '#a855f7'       // purple
+  hype: '#a855f7'       // lila
 };
 
-// Global map to hold grid markers for easy removal
+// Global map a rács markerek tárolására
 const moodGridMarkers = new Map(); 
 
+// Hozzáadva a moodGridCells és onZoomChange a propokhoz
 export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMood, moodGridCells, onZoomChange }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
@@ -26,14 +26,13 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
 
   // Map initialization: Runs ONCE on mount
   useEffect(() => {
-    // Fontos ellenőrzés: ha a MapLibre nem töltődött be globálisan, vagy már inicializálva van, kiszállunk.
-    if (!maplibregl.Map || !mapContainerRef.current || mapRef.current) return;
+    // Csak akkor fusson, ha a MapLibre elérhető és a konténer létezik
+    if (!maplibregl.Map || !mapContainerRef.current || mapRef.current) return;
 
-    // A térkép inicializálása alapértelmezett beállításokkal
-    const initialCenter = [19, 47];
+    // Inicializálási központ (a GPS-re ugrás külön useEffect-ben történik)
+    const initialCenter = [19, 47]; 
     const initialZoom = 4;
 
-    // MapLibre map creation
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: {
@@ -56,17 +55,17 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
           }
         ]
       },
-      center: initialCenter, 
-      zoom: initialZoom, 
+      center: initialCenter,
+      zoom: initialZoom,
       attributionControl: false
     });
 
-    // Enable basic map interactions
+    // enable interactions
     map.dragPan.enable();
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
 
-    // Function to emit current map bounds and zoom for data fetching
+    // Bounds és Zoom visszaküldése az App.jsx-nek
     const emitBounds = () => {
       const b = map.getBounds();
       const bounds = {
@@ -75,55 +74,45 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
         east: b.getEast(),
         west: b.getWest()
       };
-      const zoom = map.getZoom();
       onBoundsChange?.(bounds);
-      onZoomChange?.(zoom);
+      onZoomChange?.(map.getZoom()); // Zoom visszaküldése
     };
 
     map.on('moveend', emitBounds);
     map.on('load', emitBounds);
-    map.on('zoomend', emitBounds); 
+    map.on('zoomend', emitBounds); // Zoomend esemény hozzáadva
 
     mapRef.current = map;
 
     return () => {
-      if (mapRef.current) {
-            mapRef.current.remove();
+        if (mapRef.current) {
+            mapRef.current.remove();
         }
       mapRef.current = null;
     };
-  }, [onBoundsChange, onZoomChange]); // Futtatás csak egyszer, mountkor
+  }, [onBoundsChange, onZoomChange]);
 
-  // 1. GPS központozás: Csak akkor ugrik, ha a coords először megérkezik (vagy frissül, ha viewCenter nincs beállítva)
+  // Center map on user coords (GPS) and viewCenter (Search)
   useEffect(() => {
     const map = mapRef.current;
-    // Csak akkor fusson, ha van coords, de nincs aktív keresési cél
-    if (!map || !coords || viewCenter) return;
+    if (!map) return;
+    const target = viewCenter || coords;
+    if (!target) return;
     
-    // FlyTo animációval ugrunk a GPS helyre (magasabb zoommal)
+    // A GPS-re csak akkor fókuszáljunk, ha még nem volt keresés
+    const isGpsFocus = coords && !viewCenter;
+    const zoomLevel = viewCenter?.zoom || (isGpsFocus ? 12 : 10);
+    
+    // FlyTo a helyes pozícióra
     map.flyTo({
-      center: [coords.lng, coords.lat],
-      zoom: 12, // Közeli zoom a helyi nézethez
+      center: [target.lng, target.lat],
+      zoom: zoomLevel,
       speed: 0.9,
-      essential: true
+      essential: true // Ezzel biztosítjuk az ugrást
     });
-    // FONTOS: Ez a useEffect csak a coords-tól függ.
-  }, [coords, viewCenter]); 
+  }, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
-  // 2. Center map on search result (viewCenter) - runs every time viewCenter changes
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !viewCenter) return;
-    
-    // FlyTo animációval ugrunk a keresett helyre
-    map.flyTo({
-      center: [viewCenter.lng, viewCenter.lat],
-      zoom: viewCenter.zoom || 10,
-      speed: 0.9
-    });
-  }, [viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
-
-  // Show user position as a blue dot (User Marker) - runs when coords changes
+  // show user position as a blue dot
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords || !maplibregl.Marker) return;
@@ -137,63 +126,63 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
         .setLngLat([coords.lng, coords.lat])
         .addTo(map);
     } else {
-      userMarkerRef.current.setLngLat([coords.lng, coords.lat]); // Update marker position
+      userMarkerRef.current.setLngLat([coords.lng, coords.lat]);
     }
   }, [coords]);
 
-  // Personal aura around user (Personal Mood Aura)
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !coords || !maplibregl.Marker) return;
+  // personal aura around user (Saját Aura - Visszaállítva!)
+useEffect(() => {
+  const map = mapRef.current;
+  if (!map || !coords || !maplibregl.Marker) return;
 
-    // If no mood color or total is zero, remove the aura
-    if (!personalMood || !personalMood.color || personalMood.total === 0) {
-      if (personalAuraRef.current) {
-        personalAuraRef.current.remove();
-        personalAuraRef.current = null;
-      }
-      return;
+  // ha nincs mood szín, távolítsuk el az aurát
+  if (!personalMood || !personalMood.color || personalMood.total === 0) {
+    if (personalAuraRef.current) {
+      personalAuraRef.current.remove();
+      personalAuraRef.current = null;
     }
+    return;
+  }
 
-    const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
+  const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
 
-    if (!personalAuraRef.current) {
-      // Create the marker element for the aura
-      const container = document.createElement('div');
-      container.className = 'personal-aura';
+  if (!personalAuraRef.current) {
+    // létrehozzuk a marker elementet
+    const container = document.createElement('div');
+    container.className = 'personal-aura';
 
-      const inner = document.createElement('div');
-      inner.className = 'personal-aura-inner';
-      container.appendChild(inner);
+    const inner = document.createElement('div');
+    inner.className = 'personal-aura-inner';
+    container.appendChild(inner);
 
-      inner.style.setProperty('--personal-color', personalMood.color);
-      inner.style.opacity = String(opacity);
+    inner.style.setProperty('--personal-color', personalMood.color);
+    inner.style.opacity = String(opacity);
 
-      const marker = new maplibregl.Marker({
-        element: container
-      })
-        .setLngLat([coords.lng, coords.lat])
-        .addTo(map);
+    const marker = new maplibregl.Marker({
+      element: container
+    })
+      .setLngLat([coords.lng, coords.lat])
+      .addTo(map);
 
-      personalAuraRef.current = marker;
-    } else {
-      // Update the existing aura position and style
-      const marker = personalAuraRef.current;
-      marker.setLngLat([coords.lng, coords.lat]);
+    personalAuraRef.current = marker;
+  } else {
+    // frissítjük a meglévő aurát
+    const marker = personalAuraRef.current;
+    marker.setLngLat([coords.lng, coords.lat]);
 
-      const el = marker.getElement().querySelector('.personal-aura-inner');
-      if (el) {
-        el.style.setProperty('--personal-color', personalMood.color);
-        el.style.opacity = String(opacity);
-      }
+    const el = marker.getElement().querySelector('.personal-aura-inner');
+    if (el) {
+      el.style.setProperty('--personal-color', personalMood.color);
+      el.style.opacity = String(opacity);
     }
-  }, [coords, personalMood]);
+  }
+}, [coords, personalMood]);
 
-  // Show pulses (new events)
+
+  // show pulses (new events)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !pulses || pulses.length === 0 || !maplibregl.Marker) return;
-    
 
     pulses.forEach((p) => {
       const lat = typeof p.lat === 'number' ? p.lat : Number(p.lat);
@@ -218,88 +207,83 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
         .setLngLat([lng, lat])
         .addTo(map);
 
-      // Pulse fades out after 6 seconds
       setTimeout(() => {
         marker.remove();
       }, 6000);
     });
   }, [pulses]);
+    
+    // Mood Grid Cells megjelenítése (Visszaállítva!)
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map || !maplibregl.Marker) return;
+        
+        const visibleKeys = new Set();
+        const currentZoom = map.getZoom(); 
 
-  // Mood Grid Cells megjelenítése
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !maplibregl.Marker) return;
-    
-    const visibleKeys = new Set();
-    const currentZoom = map.getZoom(); 
+        moodGridCells?.forEach(cell => {
+            const key = cell.key; 
+            visibleKeys.add(key);
 
-    // 1. Meglévő markerek frissítése és az újak létrehozása
-    moodGridCells?.forEach(cell => {
-      const key = cell.key; 
-      visibleKeys.add(key);
+            // Funkció a pixelméret kiszámításához a cella mérete alapján
+            const calculatePixelSize = (zoom) => {
+                // Ez a formula biztosítja, hogy kisebb zoomnál az aura is arányosan nagyobb legyen.
+                return Math.max(10, Math.min(250, 100 * Math.pow(2, zoom - 10)));
+            };
 
-      // Funkció a pixelméret kiszámításához a cella mérete alapján
-      const calculatePixelSize = (zoom) => {
-          // Ez a formula biztosítja, hogy kisebb zoomnál az aura is arányosan nagyobb legyen.
-          // Zoom 10-nél kb 100px.
-          return Math.max(10, Math.min(250, 100 * Math.pow(2, zoom - 10)));
-      };
+            const pixelSize = calculatePixelSize(currentZoom);
 
-      const pixelSize = calculatePixelSize(currentZoom);
+            if (moodGridMarkers.has(key)) {
+                // Frissítjük a meglévő markert
+                const marker = moodGridMarkers.get(key);
+                marker.setLngLat([cell.lng, cell.lat]);
+                
+                const el = marker.getElement().querySelector('.mood-grid-cell-inner');
+                if (el) {
+                    el.style.setProperty('--cell-color', cell.color);
+                    el.style.opacity = String(0.1 + 0.8 * cell.intensity);
+                    el.style.width = `${pixelSize}px`;
+                    el.style.height = `${pixelSize}px`;
+                }
 
-      if (moodGridMarkers.has(key)) {
-        // Frissítjük a meglévő markert
-        const marker = moodGridMarkers.get(key);
-        marker.setLngLat([cell.lng, cell.lat]);
-        
-        const el = marker.getElement().querySelector('.mood-grid-cell-inner');
-        if (el) {
-          el.style.setProperty('--cell-color', cell.color);
-          el.style.opacity = String(0.1 + 0.8 * cell.intensity);
-          
-          el.style.width = `${pixelSize}px`;
-          el.style.height = `${pixelSize}px`;
-        }
+            } else {
+                // Új marker létrehozása
+                const container = document.createElement('div');
+                container.className = 'mood-grid-cell-container';
 
-      } else {
-        // Új marker létrehozása
-        const container = document.createElement('div');
-        container.className = 'mood-grid-cell-container';
+                const inner = document.createElement('div');
+                inner.className = 'mood-grid-cell-inner';
+                container.appendChild(inner);
+                
+                inner.style.setProperty('--cell-color', cell.color);
+                inner.style.opacity = String(0.1 + 0.8 * cell.intensity);
+                inner.style.width = `${pixelSize}px`;
+                inner.style.height = `${pixelSize}px`;
 
-        const inner = document.createElement('div');
-        inner.className = 'mood-grid-cell-inner';
-        container.appendChild(inner);
-        
-        inner.style.setProperty('--cell-color', cell.color);
-        inner.style.opacity = String(0.1 + 0.8 * cell.intensity);
-        
-        // Méret beállítás
-        inner.style.width = `${pixelSize}px`;
-        inner.style.height = `${pixelSize}px`;
+                const marker = new maplibregl.Marker({ 
+                    element: container,
+                    anchor: 'center' 
+                })
+                    .setLngLat([cell.lng, cell.lat])
+                    .addTo(map);
 
-        const marker = new maplibregl.Marker({ 
-            element: container,
-            anchor: 'center' // A pontot a DOM elem közepéhez illesztjük
-        })
-          .setLngLat([cell.lng, cell.lat])
-          .addTo(map);
+                moodGridMarkers.set(key, marker);
+            }
+        });
 
-        moodGridMarkers.set(key, marker);
-      }
-    });
+        // Eltávolítjuk azokat a markereket, amik már nincsenek az adatokban
+        const markersToRemove = [];
+        moodGridMarkers.forEach((marker, key) => {
+            if (!visibleKeys.has(key)) {
+                marker.remove();
+                markersToRemove.push(key);
+            }
+        });
 
-    // 2. Eltávolítjuk azokat a markereket, amik már nincsenek az adatokban
-    const markersToRemove = [];
-    moodGridMarkers.forEach((marker, key) => {
-      if (!visibleKeys.has(key)) {
-        marker.remove();
-        markersToRemove.push(key);
-      }
-    });
+        markersToRemove.forEach(key => moodGridMarkers.delete(key));
 
-    markersToRemove.forEach(key => moodGridMarkers.delete(key));
+    }, [moodGridCells]);
 
-  }, [moodGridCells]); 
 
   // zoom controls
   function handleZoomIn() {
@@ -312,7 +296,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     mapRef.current.zoomOut();
   }
 
-  // Back to user position button
+  // Vissza a saját pozícióhoz
   function handleBackToMe() {
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -332,7 +316,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
         <button onClick={handleZoomOut}>−</button>
       </div>
       
-      {/* Back to me button */}
+      {/* Vissza hozzám gomb */}
       {coords && (
         <button 
           className="back-to-me-btn"
