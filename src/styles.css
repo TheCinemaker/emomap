@@ -1,4 +1,4 @@
-/* src/styles.css */
+/* src/styles.css - JAVÍTVA */
 html,
 body,
 #root {
@@ -102,7 +102,7 @@ button {
   pointer-events: none;
 }
 
-/* 🆕 CSUPÁN EZ AZ EGY ÚJ CSS - vote confirmation */
+/* CSUPÁN EZ AZ EGY ÚJ CSS - vote confirmation */
 .emotion-button.voted {
   background: rgba(34, 197, 94, 0.2) !important;
   border-color: #22c55e !important;
@@ -177,29 +177,32 @@ button {
   box-shadow: 0 0 0 4px rgba(36, 160, 255, 0.5);
 }
 
-/* MOOD AURA – 15 perces hangulat a viewport fölött */
-.mood-aura {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* JAVÍTOTT: SZEMÉLYES HANGULAT AURA - MapLibre Markerrel pozicionálva */
+.personal-aura {
+    /* Ezzel biztosítjuk, hogy a MapLibre által beállított pont (a Marker origin)
+       az aura komponens közepére essen, nem a bal felső sarkára. */
+    transform: translate(-50%, -50%); 
+    /* Állítsd be az alap méretet! (Ez a max aura méret, mielőtt a belső div skálázza) */
+    width: 100px;
+    height: 100px;
+    pointer-events: none;
 }
 
-.mood-aura-inner {
-  width: 60vmin;
-  height: 60vmin;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    var(--mood-color, rgba(56, 189, 248, 0.7)) 0%,
-    transparent 70%
-  );
-  mix-blend-mode: screen;
-  animation: mood-breathe 6s ease-in-out infinite alternate;
+.personal-aura-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    background: radial-gradient(
+      circle,
+      var(--personal-color, rgba(56, 189, 248, 0.7)) 0%,
+      transparent 70%
+    );
+    mix-blend-mode: screen;
+    animation: mood-breathe 6s ease-in-out infinite alternate;
 }
+
+/* ELTÁVOLÍTOTTUK: A régi, problémás, teljes képernyős .mood-aura definíciót. */
+
 
 @keyframes mood-breathe {
   0% {
@@ -242,6 +245,4 @@ button {
 }
 .back-to-me-btn:active {
   transform: scale(0.95);
-}
-
 }
