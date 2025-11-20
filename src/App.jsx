@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { EMOTIONS } from './emotions';
 import { supabase } from './supabaseClient';
@@ -7,6 +6,7 @@ import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
 import { usePersonalMood } from './usePersonalMood';
 import { useAreaMood } from './useAreaMood';
+import { useGeolocation } from './useGeolocation'; // ✅ Folyamatos GPS importálva
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
@@ -26,8 +26,7 @@ function getOrCreateUserId() {
 
 export default function App() {
   const [userId, setUserId] = useState(null);
-  const [gpsAllowed, setGpsAllowed] = useState(null);
-  const [coords, setCoords] = useState(null);
+  // A régi GPS state-ek (gpsAllowed, coords) eltávolítva.
   const [lastVoteAt, setLastVoteAt] = useState(null);
   const [events, setEvents] = useState([]);
 
@@ -42,6 +41,10 @@ export default function App() {
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [now, setNow] = useState(Date.now());
 
+  // ✅ ÚJ: Folyamatos GPS koordináták lekérése a useGeolocation hookkal
+  const { coords, error: geoError } = useGeolocation();
+  const gpsAllowed = coords !== null && geoError === null; // Ezzel állítjuk be, engedélyezett-e a GPS
+
   useEffect(() => {
     const interval = setInterval(() => {
       setNow(Date.now());
@@ -54,7 +57,7 @@ export default function App() {
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
   const personalMood = usePersonalMood(coords, SESSION_ID);
-  const areaMood = useAreaMood(mapBounds, SESSION_ID); // 🆕 EZ HIÁNYZOTT!
+  const areaMood = useAreaMood(mapBounds, SESSION_ID);
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
@@ -68,28 +71,8 @@ export default function App() {
     setUserId(id);
   }, []);
 
-  useEffect(() => {
-    if (!('geolocation' in navigator)) {
-      setGpsAllowed(false);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = Math.round(pos.coords.latitude * 1000) / 1000;
-        const lng = Math.round(pos.coords.longitude * 1000) / 1000;
-        setCoords({ lat, lng });
-        setGpsAllowed(true);
-      },
-      (err) => {
-        console.error('GPS error:', err);
-        setGpsAllowed(false);
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 8000
-      }
-    );
-  }, []);
+  // ❌ Eltávolítva: A régi, egyszeri getCurrentPosition useEffect.
+  //    Ezt a useGeolocation hook vette át.
 
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
@@ -130,6 +113,7 @@ export default function App() {
       setLastVotedEmotion(emotionId);
       setTimeout(() => setLastVotedEmotion(null), 1000);
 
+      // Új pulzus hozzáadása a térképen lévő animációhoz
       setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
     } catch (err) {
       console.error('Unexpected insert error:', err);
@@ -145,6 +129,7 @@ export default function App() {
     setSearchError(null);
 
     try {
+      // Nominatim keresés API hívás (OK)
       const url =
         'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
         encodeURIComponent(q);
@@ -174,6 +159,7 @@ export default function App() {
         return;
       }
 
+      // Térkép központjának beállítása a keresett helyre
       setViewCenter({ lat, lng, zoom: 11 });
       setSearchLoading(false);
     } catch (err) {
@@ -196,14 +182,14 @@ export default function App() {
       <main className="app-main">
         <div className="map-wrapper">
           <MapView
-            coords={coords}
+            coords={coords} // ✅ Folyamatosan frissül a useGeolocation-ból
             viewCenter={viewCenter}
             onBoundsChange={setMapBounds}
             pulses={pulseBatch}
             personalMood={personalMood} 
           />
 
-          {/* 🆕 Area Mood Aura */}
+          {/* 🆕 Area Mood Aura (Globális/Viewport Aura) */}
           {areaMood && areaMood.color && (
             <div className="mood-aura">
               <div
@@ -222,11 +208,11 @@ export default function App() {
             </div>
             <div>
               <strong>Location:</strong>{' '}
-              {gpsAllowed === null
-                ? 'requesting...'
-                : gpsAllowed
-                ? `${coords?.lat}, ${coords?.lng}`
-                : 'denied'}
+              {coords
+                ? `${coords.lat}, ${coords.lng}`
+                : geoError // ✅ GPS hibaüzenet megjelenítése
+                ? `GPS Error: ${geoError}`
+                : 'requesting...'}
             </div>
             <div>
               <strong>Vote:</strong>{' '}
@@ -272,7 +258,8 @@ export default function App() {
                   padding: '4px 6px',
                   borderRadius: 6,
                   border: 'none',
-                  outline: 'none'
+                  outline: 'none',
+                  color: '#000'
                 }}
               />
               <button
