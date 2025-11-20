@@ -1,28 +1,33 @@
 // src/MapView.jsx
 import React, { useEffect, useRef } from 'react';
-import maplibregl from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+import maplibregl from 'maplibregl';
+import 'maplibregl/dist/maplibregl.css';
 
 const EMOTION_COLORS = {
-  happy: '#22c55e',     // zöld
-  bored: '#9ca3af',     // szürke
-  stressed: '#ef4444',  // piros
-  tired: '#facc15',     // sárga
-  motivated: '#0ea5e9', // kék
+  happy: '#22c55e',     // green
+  bored: '#9ca3af',     // grey
+  stressed: '#ef4444',  // red
+  tired: '#facc15',     // yellow
+  motivated: '#0ea5e9', // blue
   love: '#ec4899',      // pink
-  hype: '#a855f7'       // lila
+  hype: '#a855f7'       // purple
 };
 
-export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMood }) {
+// Global map to hold grid markers for easy removal
+const moodGridMarkers = new Map(); 
+
+export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMood, moodGridCells, onZoomChange }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
   const personalAuraRef = useRef(null);
+  const zoomLevelRef = useRef(null); 
 
-  // Init map once
+  // Map initialization
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
+    // MapLibre map creation
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
       style: {
@@ -45,16 +50,17 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
           }
         ]
       },
-      center: [19, 47],
+      center: [19, 47], // Default center (Hungary)
       zoom: 4,
       attributionControl: false
     });
 
-    // enable interactions
+    // Enable basic map interactions
     map.dragPan.enable();
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
 
+    // Function to emit current map bounds and zoom for data fetching
     const emitBounds = () => {
       const b = map.getBounds();
       const bounds = {
@@ -63,11 +69,14 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
         east: b.getEast(),
         west: b.getWest()
       };
+      const zoom = map.getZoom();
       onBoundsChange?.(bounds);
+      onZoomChange?.(zoom); // Visszaadja a zoom szintet az App.jsx-nek
     };
 
     map.on('moveend', emitBounds);
     map.on('load', emitBounds);
+    map.on('zoomend', emitBounds); 
 
     mapRef.current = map;
 
@@ -75,9 +84,9 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
       map.remove();
       mapRef.current = null;
     };
-  }, [onBoundsChange]);
+  }, [onBoundsChange, onZoomChange]);
 
-  // center map on user coords
+  // Center map on user coords or search center
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -91,7 +100,7 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
     });
   }, [coords?.lat, coords?.lng, viewCenter?.lat, viewCenter?.lng, viewCenter?.zoom]);
 
-  // show user position as a blue dot
+  // Show user position as a blue dot (User Marker)
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -105,60 +114,59 @@ export function MapView({ coords, viewCenter, onBoundsChange, pulses, personalMo
         .setLngLat([coords.lng, coords.lat])
         .addTo(map);
     } else {
-      userMarkerRef.current.setLngLat([coords.lng, coords.lat]);
+      userMarkerRef.current.setLngLat([coords.lng, coords.lat]); // Update marker position
     }
   }, [coords]);
 
-  // personal aura around user
-useEffect(() => {
-  const map = mapRef.current;
-  if (!map || !coords) return;
+  // Personal aura around user (Personal Mood Aura)
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !coords) return;
 
-  // ha nincs mood szín, távolítsuk el az aurát
-  if (!personalMood || !personalMood.color || personalMood.total === 0) {
-    if (personalAuraRef.current) {
-      personalAuraRef.current.remove();
-      personalAuraRef.current = null;
+    // If no mood color or total is zero, remove the aura
+    if (!personalMood || !personalMood.color || personalMood.total === 0) {
+      if (personalAuraRef.current) {
+        personalAuraRef.current.remove();
+        personalAuraRef.current = null;
+      }
+      return;
     }
-    return;
-  }
 
-  const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
+    const opacity = Math.min(1, 0.4 + 0.6 * personalMood.intensity);
 
-  if (!personalAuraRef.current) {
-    // létrehozzuk a marker elementet
-    const container = document.createElement('div');
-    container.className = 'personal-aura';
+    if (!personalAuraRef.current) {
+      // Create the marker element for the aura
+      const container = document.createElement('div');
+      container.className = 'personal-aura';
 
-    const inner = document.createElement('div');
-    inner.className = 'personal-aura-inner';
-    container.appendChild(inner);
+      const inner = document.createElement('div');
+      inner.className = 'personal-aura-inner';
+      container.appendChild(inner);
 
-    inner.style.setProperty('--personal-color', personalMood.color);
-    inner.style.opacity = String(opacity);
+      inner.style.setProperty('--personal-color', personalMood.color);
+      inner.style.opacity = String(opacity);
 
-    const marker = new maplibregl.Marker({
-      element: container
-    })
-      .setLngLat([coords.lng, coords.lat])
-      .addTo(map);
+      const marker = new maplibregl.Marker({
+        element: container
+      })
+        .setLngLat([coords.lng, coords.lat])
+        .addTo(map);
 
-    personalAuraRef.current = marker;
-  } else {
-    // frissítjük a meglévő aurát
-    const marker = personalAuraRef.current;
-    marker.setLngLat([coords.lng, coords.lat]);
+      personalAuraRef.current = marker;
+    } else {
+      // Update the existing aura position and style
+      const marker = personalAuraRef.current;
+      marker.setLngLat([coords.lng, coords.lat]);
 
-    const el = marker.getElement().querySelector('.personal-aura-inner');
-    if (el) {
-      el.style.setProperty('--personal-color', personalMood.color);
-      el.style.opacity = String(opacity);
+      const el = marker.getElement().querySelector('.personal-aura-inner');
+      if (el) {
+        el.style.setProperty('--personal-color', personalMood.color);
+        el.style.opacity = String(opacity);
+      }
     }
-  }
-}, [coords, personalMood]);
+  }, [coords, personalMood]);
 
-
-  // show pulses (new events)
+  // Show pulses (new events)
   useEffect(() => {
     if (!mapRef.current || !pulses || pulses.length === 0) return;
     const map = mapRef.current;
@@ -186,11 +194,88 @@ useEffect(() => {
         .setLngLat([lng, lat])
         .addTo(map);
 
+      // Pulse fades out after 6 seconds
       setTimeout(() => {
         marker.remove();
       }, 6000);
     });
   }, [pulses]);
+
+  // Mood Grid Cells megjelenítése
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    
+    const visibleKeys = new Set();
+    const currentZoom = map.getZoom(); 
+
+    // 1. Meglévő markerek frissítése és az újak létrehozása
+    moodGridCells?.forEach(cell => {
+      const key = cell.key; 
+      visibleKeys.add(key);
+
+      // Funkció a pixelméret kiszámításához a cella mérete alapján
+      const calculatePixelSize = (zoom) => {
+          // Ez a formula biztosítja, hogy kisebb zoomnál az aura is arányosan nagyobb legyen.
+          // Zoom 10-nél kb 100px.
+          return Math.max(10, Math.min(250, 100 * Math.pow(2, zoom - 10)));
+      };
+
+      const pixelSize = calculatePixelSize(currentZoom);
+
+      if (moodGridMarkers.has(key)) {
+        // Frissítjük a meglévő markert
+        const marker = moodGridMarkers.get(key);
+        marker.setLngLat([cell.lng, cell.lat]);
+        
+        const el = marker.getElement().querySelector('.mood-grid-cell-inner');
+        if (el) {
+          el.style.setProperty('--cell-color', cell.color);
+          el.style.opacity = String(0.1 + 0.8 * cell.intensity);
+          
+          el.style.width = `${pixelSize}px`;
+          el.style.height = `${pixelSize}px`;
+        }
+
+      } else {
+        // Új marker létrehozása
+        const container = document.createElement('div');
+        container.className = 'mood-grid-cell-container';
+
+        const inner = document.createElement('div');
+        inner.className = 'mood-grid-cell-inner';
+        container.appendChild(inner);
+        
+        inner.style.setProperty('--cell-color', cell.color);
+        inner.style.opacity = String(0.1 + 0.8 * cell.intensity);
+        
+        // Méret beállítás
+        inner.style.width = `${pixelSize}px`;
+        inner.style.height = `${pixelSize}px`;
+
+        const marker = new maplibregl.Marker({ 
+            element: container,
+            anchor: 'center' // A pontot a DOM elem közepéhez illesztjük
+        })
+          .setLngLat([cell.lng, cell.lat])
+          .addTo(map);
+
+        moodGridMarkers.set(key, marker);
+      }
+    });
+
+    // 2. Eltávolítjuk azokat a markereket, amik már nincsenek az adatokban
+    const markersToRemove = [];
+    moodGridMarkers.forEach((marker, key) => {
+      if (!visibleKeys.has(key)) {
+        marker.remove();
+        markersToRemove.push(key);
+      }
+    });
+
+    markersToRemove.forEach(key => moodGridMarkers.delete(key));
+
+  }, [moodGridCells]); 
 
   // zoom controls
   function handleZoomIn() {
@@ -203,7 +288,7 @@ useEffect(() => {
     mapRef.current.zoomOut();
   }
 
-  // Vissza a saját pozícióhoz
+  // Back to user position button
   function handleBackToMe() {
     const map = mapRef.current;
     if (!map || !coords) return;
@@ -223,7 +308,7 @@ useEffect(() => {
         <button onClick={handleZoomOut}>−</button>
       </div>
       
-      {/* Vissza hozzám gomb */}
+      {/* Back to me button */}
       {coords && (
         <button 
           className="back-to-me-btn"
