@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { EMOTIONS } from './emotions';
 import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
@@ -8,25 +8,23 @@ import { useEmotionsStats } from './useEmotionsStats';
 import { usePersonalMood } from './usePersonalMood';
 import { useAreaMood } from './useAreaMood';
 import { useGeolocation } from './useGeolocation';
-import { useMoodGrid } from './useMoodGrid'; 
+import { useMoodGrid } from './useMoodGrid';
+import LoadingScreen from './components/LoadingScreen';
+import Auth from './components/Auth';
+import ReelsViewer from './components/ReelsViewer';
+import RandomMatch from './components/RandomMatch';
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000; // 2 minutes
 
-function getOrCreateUserId() {
-  if (typeof window === 'undefined') return null;
-  const key = 'emotionglobe_user_id';
-  let id = window.localStorage.getItem(key);
-  if (!id) {
-    id =
-      crypto.randomUUID?.() ??
-      `user_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    window.localStorage.setItem(key, id);
-  }
-  return id;
-}
+// Deprecated: We use Supabase Auth now
+// function getOrCreateUserId() {
+// ...
+// }
 
 export default function App() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState(null);
   const [userId, setUserId] = useState(null);
   const [lastVoteAt, setLastVoteAt] = useState(null);
   const [events, setEvents] = useState([]);
@@ -39,8 +37,10 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
+  const [showRandomMatch, setShowRandomMatch] = useState(false);
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
+  const [lastVoteLocation, setLastVoteLocation] = useState(null); // Track where the user last voted
   const [now, setNow] = useState(Date.now());
 
   // Folyamatos GPS koordináták lekérése a useGeolocation hookkal
@@ -58,22 +58,106 @@ export default function App() {
   }, []);
 
   const stats = useEmotionsStats(mapBounds, SESSION_ID);
-  const personalMood = usePersonalMood(coords, SESSION_ID);
+  // Use lastVoteLocation for personal mood if available, otherwise fallback to coords (but only if voted)
+  const personalMood = usePersonalMood(lastVoteLocation || coords, SESSION_ID);
   const areaMood = useAreaMood(mapBounds, SESSION_ID);
-  
+
+  // DEMO MODE LOGIC
+  const DEMO_MODE = true;
+  const [demoData, setDemoData] = useState([]);
+
+  useEffect(() => {
+    if (!DEMO_MODE || isLoading) return; // Wait for loading to finish
+
+    // Define some "hotspots" for demo data to cluster around (London, NY, Tokyo, etc.)
+    const hotspots = [
+      { lat: 51.5074, lng: -0.1278 }, // London
+      { lat: 40.7128, lng: -74.0060 }, // New York
+      { lat: 35.6762, lng: 139.6503 }, // Tokyo
+      { lat: 48.8566, lng: 2.3522 }, // Paris
+      { lat: -33.8688, lng: 151.2093 }, // Sydney
+      { lat: 47.4979, lng: 19.0402 }, // Budapest
+    ];
+
+    const interval = setInterval(() => {
+      // Generate a BATCH of random events
+      const batchSize = 50; // 50 events per tick
+      const newEvents = [];
+
+      for (let i = 0; i < batchSize; i++) {
+        let lat, lng;
+
+        // 50% chance to pick a hotspot, 50% random global
+        if (Math.random() > 0.5) {
+          const spot = hotspots[Math.floor(Math.random() * hotspots.length)];
+          // Scatter around hotspot (gaussian-ish)
+          lat = spot.lat + (Math.random() - 0.5) * 0.5;
+          lng = spot.lng + (Math.random() - 0.5) * 0.5;
+        } else {
+          // Random global
+          lat = (Math.random() * 160) - 80;
+          lng = (Math.random() * 360) - 180;
+        }
+
+        const emotions = EMOTIONS.map(e => e.id);
+        const randomEmotion = emotions[Math.floor(Math.random() * emotions.length)];
+
+        newEvents.push({
+          id: `demo_${Date.now()}_${Math.random()}`,
+          emotion: randomEmotion,
+          lat,
+          lng,
+          inserted_at: new Date().toISOString()
+        });
+      }
+
+      // Add to pulse batch for animation (limit to avoid lag)
+      setPulseBatch(prev => {
+        const next = [...prev, ...newEvents];
+        return next.slice(-200); // Keep last 200 pulses (increased from 100)
+      });
+
+      // Add to demo data for heatmap (larger buffer)
+      setDemoData(prev => {
+        const next = [...prev, ...newEvents];
+        // Keep last 5000 demo points for a dense map
+        return next.slice(-5000);
+      });
+
+    }, 100); // 10 ticks per second * 50 events = 500 events/sec
+
+    return () => clearInterval(interval);
+  }, [isLoading]); // Re-run when loading finishes
+
   // Átadjuk a zoom szintet a rács-aggregációnak a dinamikus méretezéshez
-  const moodGrid = useMoodGrid(mapBounds, SESSION_ID, mapZoom); 
+  // Pass demoData to useMoodGrid
+  const moodGrid = useMoodGrid(mapBounds, SESSION_ID, mapZoom, demoData);
 
   useEmotionsPolling(mapBounds, SESSION_ID, (batch) => {
     setPulseBatch((prev) => {
       const merged = [...prev, ...batch];
-      return merged.slice(-100);
+      return merged.slice(-200);
     });
   });
 
   useEffect(() => {
-    const id = getOrCreateUserId();
-    setUserId(id);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) setUserId(session.user.id);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        setUserId(session.user.id);
+      } else {
+        setUserId(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const msSinceLastVote = useMemo(() => {
@@ -87,6 +171,9 @@ export default function App() {
     if (!canVote) return;
     if (!coords || !userId) return;
 
+    // Generate a temporary ID immediately so we can show the pulse
+    const tempId = `user_${userId}_${Date.now()}`;
+
     const event = {
       user_id: userId,
       session_id: SESSION_ID,
@@ -94,6 +181,15 @@ export default function App() {
       lat: coords.lat,
       lng: coords.lng
     };
+
+    // Optimistic update: Show pulse immediately
+    const optimisticEvent = { ...event, id: tempId, inserted_at: new Date().toISOString() };
+
+    setPulseBatch(prev => [...prev, optimisticEvent]);
+    setLastVoteLocation({ lat: coords.lat, lng: coords.lng }); // Store location of vote immediately
+    setLastVoteAt(Date.now());
+    setLastVotedEmotion(emotionId);
+    setTimeout(() => setLastVotedEmotion(null), 1000);
 
     try {
       const { data, error } = await supabase
@@ -110,13 +206,8 @@ export default function App() {
       console.log('EVENT STORED:', inserted || event);
 
       setEvents((prev) => [...prev, inserted || event]);
-      setLastVoteAt(Date.now());
-      
-      setLastVotedEmotion(emotionId);
-      setTimeout(() => setLastVotedEmotion(null), 1000);
-
-      // Új pulzus hozzáadása a térképen lévő animációhoz
-      setPulseBatch([inserted || { ...event, lat: coords.lat, lng: coords.lng }]);
+      // We don't need to add to pulseBatch again, the optimistic one is fine.
+      // If we wanted to be strict, we could replace the temp ID, but for a visual pulse it doesn't matter.
     } catch (err) {
       console.error('Unexpected insert error:', err);
     }
@@ -174,12 +265,42 @@ export default function App() {
   const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
   const remainingSec = Math.ceil(remainingMs / 1000);
 
+  const handleLoadingComplete = useCallback(() => {
+    setIsLoading(false);
+  }, []);
+
+  if (!session) {
+    return <Auth />;
+  }
+
   return (
     <div className="app-root">
+      {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
       <header className="app-header">
-        <div className="app-title">EmoMap – Heatmap of Emotions</div>
-        <div className="app-session">session: {SESSION_ID}</div>
+        <div className="app-title">EmoMap</div>
+        <div className="header-actions" style={{ display: 'flex', gap: '10px', alignItems: 'center', pointerEvents: 'auto' }}>
+          <button 
+            className="match-trigger-btn" 
+            onClick={() => setShowRandomMatch(true)}
+            style={{
+              background: 'linear-gradient(45deg, var(--primary-neon), var(--secondary-neon))',
+              border: 'none',
+              borderRadius: '20px',
+              padding: '8px 15px',
+              color: '#000',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              boxShadow: '0 0 10px var(--primary-neon)'
+            }}
+          >
+            Mit csinál más?
+          </button>
+          <div className="app-session" style={{ pointerEvents: 'none' }}>session: {SESSION_ID}</div>
+        </div>
       </header>
+      
+      <ReelsViewer session={session} />
+      {showRandomMatch && <RandomMatch session={session} onClose={() => setShowRandomMatch(false)} />}
 
       <main className="app-main">
         <div className="map-wrapper">
@@ -190,6 +311,7 @@ export default function App() {
             onZoomChange={setMapZoom} // Frissíti a mapZoom state-et
             pulses={pulseBatch}
             personalMood={personalMood}
+            personalAuraLocation={lastVoteLocation} // Pass the fixed location
             moodGridCells={moodGrid.cells} // Átadja a rács adatokat
           />
 
@@ -215,16 +337,16 @@ export default function App() {
               {coords
                 ? `${coords.lat}, ${coords.lng}`
                 : geoError
-                ? `GPS Error: ${geoError}`
-                : 'requesting...'}
+                  ? `GPS Error: ${geoError}`
+                  : 'requesting...'}
             </div>
             <div>
               <strong>Vote:</strong>{' '}
               {gpsAllowed !== true
                 ? 'enable location'
                 : canVote
-                ? 'you can vote now'
-                : `wait ${remainingSec}s`}
+                  ? 'you can vote now'
+                  : `wait ${remainingSec}s`}
             </div>
             <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
               <strong>Area:</strong>{' '}
@@ -233,7 +355,7 @@ export default function App() {
                 : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
               {moodGrid.warning && <span style={{ color: '#f97316' }}> ({moodGrid.warning})</span>}
             </div>
-            
+
             {/* Mood Debug Info */}
             <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
               <strong>Area Mood:</strong>{' '}
@@ -309,10 +431,8 @@ export default function App() {
               <button
                 key={e.id}
                 className={
-                  `emotion-button ${
-                    !canVote || !coords || !userId ? 'disabled' : ''
-                  } ${
-                    lastVotedEmotion === e.id ? 'voted' : ''
+                  `emotion-button ${!canVote || !coords || !userId ? 'disabled' : ''
+                  } ${lastVotedEmotion === e.id ? 'voted' : ''
                   }`
                 }
                 onClick={() => handleVote(e.id)}

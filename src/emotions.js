@@ -1,10 +1,9 @@
-// src/emotions.js
 export const EMOTIONS = [
-  { id: 'happy', name: 'Happy', label: '😊', color: '#22c55e' },
-  { id: 'bored', name: 'Bored', label: '😐', color: '#9ca3af' },
-  { id: 'stressed', name: 'Stressed', label: '😫', color: '#ef4444' },
-  { id: 'tired', name: 'Tired', label: '😴', color: '#facc15' },
-  { id: 'motivated', name: 'Motivated', label: '💪', color: '#0ea5e9' },
-  { id: 'love', name: 'Love', label: '❤️', color: '#ec4899' },
-  { id: 'hype', name: 'Hype', label: '🔥', color: '#a855f7' }
+  { id: 'happy', label: '🟢', name: 'Euphoria', color: '#00ff00' }, // Neon Green
+  { id: 'bored', label: '⚪', name: 'Null', color: '#a0a0a0' }, // Grey
+  { id: 'stressed', label: '🔴', name: 'Panic', color: '#ff0000' }, // Neon Red
+  { id: 'tired', label: '🟡', name: 'Low Bat', color: '#ffff00' }, // Neon Yellow
+  { id: 'motivated', label: '🔵', name: 'Focus', color: '#00ccff' }, // Neon Blue
+  { id: 'love', label: '🟣', name: 'Sync', color: '#ff00ff' }, // Neon Pink
+  { id: 'hype', label: '⚡', name: 'Overdrive', color: '#bf00ff' }, // Neon Purple
 ];
