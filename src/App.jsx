@@ -6,7 +6,6 @@ import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
 import { usePersonalMood } from './usePersonalMood';
-import { useAreaMood } from './useAreaMood';
 import { useGeolocation } from './useGeolocation';
 import { useMoodGrid } from './useMoodGrid';
 import { useDebounce } from './useDebounce';
@@ -34,6 +33,7 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [showRandomMatch, setShowRandomMatch] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [lastVoteLocation, setLastVoteLocation] = useState(null);
@@ -42,7 +42,6 @@ export default function App() {
   const { coords, error: geoError } = useGeolocation();
   const gpsAllowed = coords !== null && geoError === null;
 
-  // Debounce bounds & zoom so quick pan/zoom doesn't thrash the polling hooks
   const debouncedBounds = useDebounce(mapBounds, 400);
   const debouncedZoom = useDebounce(mapZoom, 400);
 
@@ -53,7 +52,6 @@ export default function App() {
 
   const stats = useEmotionsStats(debouncedBounds, SESSION_ID);
   const personalMood = usePersonalMood(lastVoteLocation || coords, SESSION_ID);
-  const areaMood = useAreaMood(debouncedBounds, SESSION_ID);
 
   const [demoData, setDemoData] = useState([]);
 
@@ -70,10 +68,8 @@ export default function App() {
     ];
 
     const interval = setInterval(() => {
-      const batchSize = 50;
       const newEvents = [];
-
-      for (let i = 0; i < batchSize; i++) {
+      for (let i = 0; i < 50; i++) {
         let lat, lng;
         if (Math.random() > 0.5) {
           const spot = hotspots[Math.floor(Math.random() * hotspots.length)];
@@ -83,19 +79,14 @@ export default function App() {
           lat = (Math.random() * 160) - 80;
           lng = (Math.random() * 360) - 180;
         }
-
-        const emotions = EMOTIONS.map(e => e.id);
-        const randomEmotion = emotions[Math.floor(Math.random() * emotions.length)];
-
+        const ids = EMOTIONS.map(e => e.id);
         newEvents.push({
           id: `demo_${Date.now()}_${Math.random()}`,
-          emotion: randomEmotion,
-          lat,
-          lng,
+          emotion: ids[Math.floor(Math.random() * ids.length)],
+          lat, lng,
           inserted_at: new Date().toISOString()
         });
       }
-
       setPulseBatch(prev => [...prev, ...newEvents].slice(-200));
       setDemoData(prev => [...prev, ...newEvents].slice(-5000));
     }, 100);
@@ -116,9 +107,7 @@ export default function App() {
       if (session) setUserId(session.user.id);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUserId(session ? session.user.id : null);
     });
@@ -153,17 +142,11 @@ export default function App() {
     setTimeout(() => setLastVotedEmotion(null), 1000);
 
     try {
-      const { error } = await supabase
-        .from('emotions')
-        .insert(event);
-
+      const { error } = await supabase.from('emotions').insert(event);
       if (error) {
-        // Server-side rate limit kicked in → rollback the visual & client timer
         console.error('Supabase insert error:', error);
         setLastVoteAt(null);
-        return;
       }
-
     } catch (err) {
       console.error('Unexpected insert error:', err);
       setLastVoteAt(null);
@@ -179,194 +162,147 @@ export default function App() {
     setSearchError(null);
 
     try {
-      const url =
-        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-        encodeURIComponent(q);
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(q);
       const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
       if (!res.ok) throw new Error('Search failed: ' + res.status);
       const data = await res.json();
-
-      if (!data || !data.length) {
-        setSearchError('No results');
-        return;
-      }
+      if (!data || !data.length) { setSearchError('Nincs találat'); return; }
       const place = data[0];
       const lat = parseFloat(place.lat);
       const lng = parseFloat(place.lon);
-
-      if (Number.isNaN(lat) || Number.isNaN(lng)) {
-        setSearchError('Invalid coordinates');
-        return;
-      }
-
+      if (Number.isNaN(lat) || Number.isNaN(lng)) { setSearchError('Hibás koordináta'); return; }
       setViewCenter({ lat, lng, zoom: 11 });
+      setShowInfo(false);
     } catch (err) {
       console.error('City search error:', err);
-      setSearchError('Search error');
+      setSearchError('Keresési hiba');
     } finally {
       setSearchLoading(false);
     }
   }, [searchTerm]);
 
-  const remainingMs = Math.max(0, RATE_LIMIT_MS - msSinceLastVote);
-  const remainingSec = Math.ceil(remainingMs / 1000);
-
+  const remainingSec = Math.ceil(Math.max(0, RATE_LIMIT_MS - msSinceLastVote) / 1000);
   const handleLoadingComplete = useCallback(() => setIsLoading(false), []);
   const handleBoundsChange = useCallback((b) => setMapBounds(b), []);
   const handleZoomChange = useCallback((z) => setMapZoom(z), []);
+  const handleLogout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
-  if (!session) {
-    return <Auth />;
-  }
+  if (!session) return <Auth />;
+
+  const promptText =
+    !gpsAllowed ? 'Engedélyezd a helymeghatározást a szavazáshoz'
+    : canVote ? 'Hogy érzed magad most?'
+    : `Új szavazat: ${remainingSec}s múlva`;
 
   return (
-    <div className="app-root">
+    <div className="app-shell">
       {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
-      <header className="app-header">
-        <div className="app-title">EmoMap</div>
-        <div className="header-actions">
+
+      <header className="app-top">
+        <div className="app-top-row">
+          <div className="app-brand">
+            <span className="app-brand-icon" aria-hidden>🌍</span>
+            <h1 className="app-brand-name">EmoMap</h1>
+          </div>
           <button
-            className="match-trigger-btn"
+            type="button"
+            className="app-icon-btn"
+            onClick={() => setShowInfo(s => !s)}
+            aria-label="Info & search"
+            title="Info"
+          >ⓘ</button>
+          <button
+            type="button"
+            className="app-pill-btn"
             onClick={() => setShowRandomMatch(true)}
           >
-            Mit csinál más?
+            <span aria-hidden>✨</span>
+            <span>Match</span>
           </button>
-          <div className="app-session">session: {SESSION_ID}</div>
         </div>
+        <ReelsViewer session={session} />
       </header>
 
-      <ReelsViewer session={session} />
       {showRandomMatch && <RandomMatch session={session} onClose={() => setShowRandomMatch(false)} />}
 
-      <main className="app-main">
-        <div className="map-wrapper">
-          <MapView
-            coords={coords}
-            viewCenter={viewCenter}
-            onBoundsChange={handleBoundsChange}
-            onZoomChange={handleZoomChange}
-            pulses={pulseBatch}
-            personalMood={personalMood}
-            personalAuraLocation={lastVoteLocation}
-            moodGridCells={moodGrid.cells}
-          />
+      <main className="app-map-area">
+        <MapView
+          coords={coords}
+          viewCenter={viewCenter}
+          onBoundsChange={handleBoundsChange}
+          onZoomChange={handleZoomChange}
+          pulses={pulseBatch}
+          personalMood={personalMood}
+          personalAuraLocation={lastVoteLocation}
+          moodGridCells={moodGrid.cells}
+        />
 
-          {/* Area mood is shown via moodGrid cells on the map — no viewport overlay needed */}
-
-          <div className="status-overlay">
-            <div>
-              <strong>User:</strong> {userId || 'loading...'}
+        {showInfo && (
+          <div className="info-panel" role="dialog" aria-label="Info">
+            <div className="info-panel-row">
+              <strong>User</strong>
+              <span className="info-panel-mono">{userId ? userId.slice(0, 8) + '…' : '—'}</span>
+              <button type="button" className="info-panel-link" onClick={handleLogout}>Kilépés</button>
             </div>
-            <div>
-              <strong>Location:</strong>{' '}
-              {coords
-                ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`
-                : geoError
-                  ? `GPS Error: ${geoError}`
-                  : 'requesting...'}
+            <div className="info-panel-row">
+              <strong>Helyzet</strong>
+              <span className="info-panel-mono">
+                {coords ? `${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}` :
+                  geoError ? 'GPS hiba' : '—'}
+              </span>
             </div>
-            <div>
-              <strong>Vote:</strong>{' '}
-              {gpsAllowed !== true
-                ? 'enable location'
-                : canVote
-                  ? 'you can vote now'
-                  : `wait ${remainingSec}s`}
+            <div className="info-panel-row">
+              <strong>Aktivitás</strong>
+              <span>
+                {stats.loading ? '…' : `24h: ${stats.last24h} · 7d: ${stats.last7d} · ∞: ${stats.all}`}
+              </span>
             </div>
-            <div style={{ marginTop: 4, fontSize: 10, opacity: 0.9 }}>
-              <strong>Area:</strong>{' '}
-              {stats.loading
-                ? 'loading...'
-                : `24h: ${stats.last24h} · 7d: ${stats.last7d} · all: ${stats.all}`}
-              {moodGrid.warning && <span style={{ color: '#f97316' }}> ({moodGrid.warning})</span>}
+            <div className="info-panel-row">
+              <strong>Cellák</strong>
+              <span>
+                {moodGrid.loading ? '…' : `${moodGrid.cells.length} (${moodGrid.totalPoints} pt)`}
+                {moodGrid.warning && <span className="info-warn"> {moodGrid.warning}</span>}
+              </span>
             </div>
 
-            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>Area Mood:</strong>{' '}
-              {areaMood && areaMood.color
-                ? `${areaMood.color} · total ${areaMood.total}`
-                : 'no mood data'}
-            </div>
-            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>My Mood:</strong>{' '}
-              {personalMood && personalMood.color
-                ? `${personalMood.color} · total ${personalMood.total}`
-                : 'no data yet'}
-            </div>
-            <div style={{ marginTop: 2, fontSize: 10, opacity: 0.9 }}>
-              <strong>Grid Cells:</strong>{' '}
-              {moodGrid.loading
-                ? 'loading...'
-                : `${moodGrid.cells.length} cells (${moodGrid.totalPoints} points)`}
-              {' '}
-              <span style={{ opacity: 0.6 }}>Zoom: {mapZoom.toFixed(1)}</span>
-            </div>
-
-            <form
-              onSubmit={handleCitySearch}
-              style={{ marginTop: 6, display: 'flex', gap: 4 }}
-            >
+            <form onSubmit={handleCitySearch} className="info-search">
               <input
                 type="text"
-                placeholder="Search city..."
+                placeholder="Város keresése…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{
-                  flex: 1,
-                  fontSize: 11,
-                  padding: '4px 6px',
-                  borderRadius: 6,
-                  border: 'none',
-                  outline: 'none',
-                  color: '#000'
-                }}
               />
-              <button
-                type="submit"
-                disabled={searchLoading}
-                style={{
-                  fontSize: 11,
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  background: searchLoading ? '#374151' : '#22c55e',
-                  color: '#fff',
-                  cursor: 'pointer'
-                }}
-              >
-                Go
+              <button type="submit" disabled={searchLoading}>
+                {searchLoading ? '…' : 'Ugrás'}
               </button>
             </form>
-            {searchError && (
-              <div style={{ marginTop: 2, fontSize: 9, color: '#f97316' }}>
-                {searchError}
-              </div>
-            )}
+            {searchError && <div className="info-warn">{searchError}</div>}
+            <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>Bezárás</button>
           </div>
-        </div>
+        )}
+      </main>
 
-        <div className="app-footer">
-          <p style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>
-            Select how you feel. You can send one pulse every 2 minutes from your
-            current location.
-          </p>
-          <div className="emotion-buttons">
-            {EMOTIONS.map((e) => (
+      <footer className="app-bottom">
+        <div className="vote-prompt">{promptText}</div>
+        <div className="emotion-grid">
+          {EMOTIONS.map((e) => {
+            const disabled = !canVote || !coords || !userId;
+            return (
               <button
                 key={e.id}
-                className={
-                  `emotion-button ${!canVote || !coords || !userId ? 'disabled' : ''
-                  } ${lastVotedEmotion === e.id ? 'voted' : ''
-                  }`
-                }
+                type="button"
+                className={`emotion-chip${lastVotedEmotion === e.id ? ' is-voted' : ''}`}
                 onClick={() => handleVote(e.id)}
+                disabled={disabled}
+                style={{ '--chip-color': e.color }}
               >
-                <span className="emoji">{e.label}</span>
-                <span className="label">{e.name}</span>
+                <span className="emotion-chip-emoji">{e.label}</span>
+                <span className="emotion-chip-label">{e.name}</span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </main>
+      </footer>
     </div>
   );
 }
