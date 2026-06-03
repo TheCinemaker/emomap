@@ -1,88 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
 export default function RandomMatch({ session, onClose }) {
-  const [matchState, setMatchState] = useState('idle'); // idle, searching, found, sending, viewing, completed
+  const [matchState, setMatchState] = useState('idle'); // idle, searching, found, sending, viewing
   const [matchId, setMatchId] = useState(null);
-  const [otherUserId, setOtherUserId] = useState(null);
+  const [, setOtherUserId] = useState(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
   const [receivedPhoto, setReceivedPhoto] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [partnerReady, setPartnerReady] = useState(false);
 
+  // Subscribe to match updates (partner joining)
   useEffect(() => {
-    let matchChannel;
-    let photoChannel;
+    if (matchState !== 'searching' || !matchId) return;
 
-    if (matchState === 'searching' && matchId) {
-      // Listen for partner joining
-      matchChannel = supabase
-        .channel(`match-${matchId}`)
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` }, payload => {
+    const channel = supabase
+      .channel(`match-${matchId}`)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'matches', filter: `id=eq.${matchId}` },
+        payload => {
           if (payload.new.status === 'matched') {
-            const partner = payload.new.user1_id === session.user.id ? payload.new.user2_id : payload.new.user1_id;
+            const partner = payload.new.user1_id === session.user.id
+              ? payload.new.user2_id
+              : payload.new.user1_id;
             setOtherUserId(partner);
             setMatchState('found');
           }
         })
-        .subscribe();
-    }
+      .subscribe();
 
-    if (matchState === 'found' || matchState === 'sending' || matchState === 'viewing') {
-      // Listen for incoming photos
-      photoChannel = supabase
-        .channel(`photos-${matchId}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'match_photos', filter: `match_id=eq.${matchId}` }, payload => {
+    return () => { supabase.removeChannel(channel); };
+  }, [matchState, matchId, session.user.id]);
+
+  // Subscribe to incoming photos (separate effect → doesn't re-subscribe on every state tick)
+  useEffect(() => {
+    if (!matchId || matchState === 'idle' || matchState === 'searching') return;
+
+    const channel = supabase
+      .channel(`photos-${matchId}`)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'match_photos', filter: `match_id=eq.${matchId}` },
+        payload => {
           if (payload.new.sender_id !== session.user.id) {
             setReceivedPhoto(payload.new);
           }
         })
-        .subscribe();
-    }
+      .subscribe();
 
-    return () => {
-      if (matchChannel) supabase.removeChannel(matchChannel);
-      if (photoChannel) supabase.removeChannel(photoChannel);
-    };
-  }, [matchState, matchId, session.user.id]);
+    return () => { supabase.removeChannel(channel); };
+  }, [matchId, matchState, session.user.id]);
 
   const startSearch = async () => {
     setMatchState('searching');
     try {
-      // 1. Try to find someone already searching
-      const { data: waitingMatches, error: searchError } = await supabase
-        .from('matches')
-        .select('*')
-        .eq('status', 'searching')
-        .neq('user1_id', session.user.id)
-        .limit(1);
+      // Atomic find-or-create on the server side
+      const { data, error } = await supabase.rpc('try_join_match', { p_anonymous: isAnonymous });
+      if (error) throw error;
 
-      if (waitingMatches && waitingMatches.length > 0) {
-        // Join their match
-        const existingMatch = waitingMatches[0];
-        const { error: updateError } = await supabase
-          .from('matches')
-          .update({ status: 'matched', user2_id: session.user.id, user2_anonymous: isAnonymous })
-          .eq('id', existingMatch.id);
-        
-        if (!updateError) {
-          setMatchId(existingMatch.id);
-          setOtherUserId(existingMatch.user1_id);
-          setMatchState('found');
-          return;
-        }
+      const row = Array.isArray(data) ? data[0] : data;
+      if (!row) throw new Error('No match data returned');
+
+      setMatchId(row.id);
+
+      if (row.status === 'matched') {
+        const partner = row.user1_id === session.user.id ? row.user2_id : row.user1_id;
+        setOtherUserId(partner);
+        setMatchState('found');
       }
-
-      // 2. Create new match waiting for someone else
-      const { data: newMatch, error: createError } = await supabase
-        .from('matches')
-        .insert({ user1_id: session.user.id, user1_anonymous: isAnonymous })
-        .select()
-        .single();
-
-      if (createError) throw createError;
-      setMatchId(newMatch.id);
-
+      // else: created a new match, wait for someone via subscription
     } catch (error) {
       console.error('Match error:', error);
       setMatchState('idle');
@@ -92,7 +76,11 @@ export default function RandomMatch({ session, onClose }) {
 
   const cancelSearch = async () => {
     if (matchId) {
-      await supabase.from('matches').update({ status: 'completed' }).eq('id', matchId);
+      await supabase
+        .from('matches')
+        .update({ status: 'completed' })
+        .eq('id', matchId)
+        .in('status', ['searching', 'matched']);
     }
     setMatchState('idle');
     setMatchId(null);
@@ -108,7 +96,7 @@ export default function RandomMatch({ session, onClose }) {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${matchId}_${session.user.id}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from('matches')
         .upload(fileName, file);
@@ -119,7 +107,7 @@ export default function RandomMatch({ session, onClose }) {
         .from('matches')
         .getPublicUrl(fileName);
 
-      await supabase
+      const { error: insertError } = await supabase
         .from('match_photos')
         .insert({
           match_id: matchId,
@@ -127,8 +115,9 @@ export default function RandomMatch({ session, onClose }) {
           photo_url: publicUrlData.publicUrl
         });
 
+      if (insertError) throw insertError;
+
       setMatchState('viewing');
-      
     } catch (error) {
       console.error('Upload failed:', error);
       alert('Upload failed: ' + error.message);
@@ -140,13 +129,8 @@ export default function RandomMatch({ session, onClose }) {
 
   const handleViewPhoto = async () => {
     if (!receivedPhoto) return;
-    // Mark as viewed (simulated Snapchat style - in a real app we'd hide it after X seconds)
     await supabase.from('match_photos').update({ viewed: true }).eq('id', receivedPhoto.id);
-    
-    // For this demo, let's just close everything after viewing
-    setTimeout(() => {
-       cancelSearch();
-    }, 5000); // 5 seconds to view
+    setTimeout(() => { cancelSearch(); }, 5000);
   };
 
   return (
@@ -154,14 +138,14 @@ export default function RandomMatch({ session, onClose }) {
       <div className="random-match-card">
         <button className="match-close" onClick={cancelSearch}>×</button>
         <h2 className="match-title">Mit csinál más?</h2>
-        
+
         {matchState === 'idle' && (
           <div className="match-content">
             <p>Kapcsolódj össze valakivel egy random fotó erejéig!</p>
             <label className="match-toggle">
-              <input 
-                type="checkbox" 
-                checked={!isAnonymous} 
+              <input
+                type="checkbox"
+                checked={!isAnonymous}
                 onChange={(e) => setIsAnonymous(!e.target.checked)}
               />
               Név felfedése a partnernek
@@ -183,12 +167,12 @@ export default function RandomMatch({ session, onClose }) {
             <p className="success-text">Találat! Készíts egy fotót, hogy mit csinálsz éppen!</p>
             <label className="match-btn primary">
               {uploading ? 'Feltöltés...' : 'Fotó küldése'}
-              <input 
-                type="file" 
-                accept="image/*" 
+              <input
+                type="file"
+                accept="image/*"
                 capture="environment"
-                onChange={handleUploadPhoto} 
-                style={{ display: 'none' }} 
+                onChange={handleUploadPhoto}
+                style={{ display: 'none' }}
                 disabled={uploading}
               />
             </label>

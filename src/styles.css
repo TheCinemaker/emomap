@@ -54,7 +54,26 @@ body {
   font-size: 0.8rem;
   color: var(--secondary-neon);
   opacity: 0.8;
+  pointer-events: none;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
   pointer-events: auto;
+}
+
+.match-trigger-btn {
+  background: linear-gradient(45deg, var(--primary-neon), var(--secondary-neon));
+  border: none;
+  border-radius: 20px;
+  padding: 8px 15px;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--primary-neon);
+  font-family: var(--font-main);
 }
 
 .app-main {
@@ -409,123 +428,182 @@ body {
   mix-blend-mode: screen;
   /* Helps colors merge nicely */
 }
-/* Auth Component Styles */
-.auth-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100vw;
-  height: 100vh;
-  background: var(--bg-color);
-  position: absolute;
-  top: 0;
-  left: 0;
+/* --- Auth Screen (clean, modern) --- */
+.auth-screen {
+  position: fixed;
+  inset: 0;
   z-index: 100;
-}
-
-.auth-box {
-  background: var(--glass-bg);
-  border: var(--glass-border);
-  padding: 40px;
-  border-radius: 8px;
-  backdrop-filter: blur(20px);
-  box-shadow: 0 0 30px rgba(0, 243, 255, 0.2);
-  width: 100%;
-  max-width: 400px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(1200px 600px at 20% 0%, rgba(99, 102, 241, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, rgba(236, 72, 153, 0.12), transparent 60%),
+    linear-gradient(180deg, #0f1115 0%, #0a0c10 100%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  color: #e6e8ee;
 }
 
-.auth-title {
-  color: var(--primary-neon);
-  margin-bottom: 5px;
-  text-shadow: 0 0 10px var(--primary-neon);
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(20, 22, 28, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  backdrop-filter: blur(14px);
 }
 
-.auth-subtitle {
-  color: #aaa;
-  margin-bottom: 25px;
-  font-size: 0.9rem;
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.auth-logo {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.auth-brand-name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #f5f7fb;
+}
+
+.auth-tagline {
+  margin: 0 0 24px;
+  color: #98a0b3;
+  font-size: 14px;
 }
 
 .auth-form {
-  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
 }
 
-.auth-input {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid #333;
-  padding: 12px;
-  border-radius: 4px;
-  color: #fff;
-  font-family: var(--font-main);
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field > span {
+  font-size: 12px;
+  font-weight: 500;
+  color: #98a0b3;
+  letter-spacing: 0.01em;
+}
+
+.auth-field input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f5f7fb;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: inherit;
   outline: none;
-  transition: all 0.3s ease;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.auth-input:focus {
-  border-color: var(--primary-neon);
-  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+.auth-field input::placeholder { color: #5b6478; }
+
+.auth-field input:focus {
+  border-color: #6366f1;
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.auth-btn {
-  background: rgba(0, 243, 255, 0.1);
-  border: 1px solid var(--primary-neon);
-  color: var(--primary-neon);
-  padding: 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: var(--font-main);
-  font-weight: bold;
-  text-transform: uppercase;
-  transition: all 0.3s ease;
-  margin-top: 10px;
-}
-
-.auth-btn:hover:not(:disabled) {
-  background: var(--primary-neon);
-  color: #000;
-  box-shadow: 0 0 20px var(--primary-neon);
-}
-
-.auth-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.auth-switch {
-  margin-top: 20px;
-}
-
-.auth-switch-btn {
-  background: none;
+.auth-submit {
+  margin-top: 6px;
+  background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
+  color: #fff;
   border: none;
-  color: var(--secondary-neon);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
   cursor: pointer;
-  font-family: var(--font-main);
-  font-size: 0.8rem;
-  opacity: 0.8;
+  transition: filter 0.15s ease, transform 0.05s ease;
 }
 
-.auth-switch-btn:hover {
-  text-decoration: underline;
-  opacity: 1;
+.auth-submit:hover:not(:disabled) { filter: brightness(1.08); }
+.auth-submit:active:not(:disabled) { transform: translateY(1px); }
+.auth-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 16px;
+  color: #5b6478;
+  font-size: 12px;
 }
 
-.auth-error {
-  background: rgba(255, 0, 0, 0.2);
-  border: 1px solid red;
-  color: #ff6b6b;
-  padding: 10px;
-  border-radius: 4px;
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-switch-link {
+  display: block;
   width: 100%;
-  margin-bottom: 15px;
-  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #c8cdda;
+  padding: 11px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.auth-switch-link:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.auth-alert {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  border: 1px solid transparent;
+}
+
+.auth-alert-error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fda4af;
+}
+
+.auth-alert-info {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.auth-footer-note {
+  margin-top: 24px;
+  color: #6b7280;
+  font-size: 12px;
   text-align: center;
+  max-width: 380px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 /* Reels Viewer Styles */

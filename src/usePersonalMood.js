@@ -123,7 +123,7 @@ export function usePersonalMood(coords, sessionId) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [coords, sessionId]);
+  }, [coords?.lat, coords?.lng, sessionId]);
 
   return mood;
 }

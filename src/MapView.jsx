@@ -13,16 +13,13 @@ const EMOTION_COLORS = {
   hype: '#bf00ff'
 };
 
-// Global map to hold grid markers for easy removal
-const moodGridMarkers = new Map();
-
 export function MapView({
   coords,
   viewCenter,
   onBoundsChange,
   pulses,
   personalMood,
-  personalAuraLocation, // New prop
+  personalAuraLocation,
   moodGridCells,
   onZoomChange
 }) {
@@ -30,7 +27,8 @@ export function MapView({
   const mapRef = useRef(null);
   const userMarkerRef = useRef(null);
   const personalAuraRef = useRef(null);
-  const zoomLevelRef = useRef(null);
+  // Per-instance marker store (was a module-level global → leaked across mounts/HMR)
+  const moodGridMarkersRef = useRef(new Map());
 
   // Initialize Map
   useEffect(() => {
@@ -279,6 +277,7 @@ export function MapView({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    const markers = moodGridMarkersRef.current;
 
     const visibleKeys = new Set();
     const currentZoom = map.getZoom();
@@ -287,11 +286,10 @@ export function MapView({
       const key = cell.key;
       visibleKeys.add(key);
 
-      // Dynamic size for grid cells too (approx 20km to overlap nicely and form a cloud)
       const pixelSize = getPixelSize(cell.lat, currentZoom, 20000);
 
-      if (moodGridMarkers.has(key)) {
-        const marker = moodGridMarkers.get(key);
+      if (markers.has(key)) {
+        const marker = markers.get(key);
         marker.setLngLat([cell.lng, cell.lat]);
 
         const el = marker.getElement().querySelector('.mood-grid-cell-inner');
@@ -321,17 +319,26 @@ export function MapView({
           .setLngLat([cell.lng, cell.lat])
           .addTo(map);
 
-        moodGridMarkers.set(key, marker);
+        markers.set(key, marker);
       }
     });
 
-    moodGridMarkers.forEach((marker, key) => {
+    markers.forEach((marker, key) => {
       if (!visibleKeys.has(key)) {
         marker.remove();
-        moodGridMarkers.delete(key);
+        markers.delete(key);
       }
     });
   }, [moodGridCells]);
+
+  // On unmount: clean up all grid markers
+  useEffect(() => {
+    const markers = moodGridMarkersRef.current;
+    return () => {
+      markers.forEach((m) => m.remove());
+      markers.clear();
+    };
+  }, []);
 
   // Zoom controls
   function handleZoomIn() {

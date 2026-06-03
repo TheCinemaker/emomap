@@ -93,7 +93,7 @@ export function useEmotionsStats(bounds, sessionId) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [bounds, sessionId]);
+  }, [bounds?.north, bounds?.south, bounds?.east, bounds?.west, sessionId]);
 
   return stats;
 }

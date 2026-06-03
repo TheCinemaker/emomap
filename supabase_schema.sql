@@ -44,7 +44,30 @@ create table if not exists public.emotions (
 
 alter table public.emotions enable row level security;
 create policy "Emotions are viewable by everyone." on public.emotions for select using ( true );
-create policy "Authenticated users can insert emotions." on public.emotions for insert with check ( auth.role() = 'authenticated' );
+
+-- Server-side rate limit: 1 vote / 2 minutes / user
+create or replace function public.check_emotion_rate_limit()
+returns boolean as $$
+  select not exists (
+    select 1 from public.emotions
+    where user_id = auth.uid()
+      and inserted_at > now() - interval '2 minutes'
+  );
+$$ language sql security definer stable;
+
+drop policy if exists "Authenticated users can insert emotions." on public.emotions;
+create policy "Authenticated users can insert their own emotions (rate-limited)."
+  on public.emotions for insert with check (
+    auth.role() = 'authenticated'
+    and auth.uid() = user_id
+    and public.check_emotion_rate_limit()
+  );
+
+-- Performance indexes
+create index if not exists emotions_inserted_at_idx on public.emotions (inserted_at desc);
+create index if not exists emotions_lat_lng_idx on public.emotions (lat, lng);
+create index if not exists emotions_user_inserted_idx on public.emotions (user_id, inserted_at desc);
+create index if not exists emotions_session_inserted_idx on public.emotions (session_id, inserted_at desc);
 
 -- 3. REELS TABLE (24h photos)
 create table if not exists public.reels (
@@ -56,8 +79,11 @@ create table if not exists public.reels (
 );
 
 alter table public.reels enable row level security;
-create policy "Reels are viewable by everyone." on public.reels for select using ( true );
+create policy "Reels (non-expired) are viewable by everyone." on public.reels for select using ( expires_at > now() );
 create policy "Users can insert their own reels." on public.reels for insert with check ( auth.uid() = user_id );
+create policy "Users can delete their own reels." on public.reels for delete using ( auth.uid() = user_id );
+
+create index if not exists reels_expires_idx on public.reels (expires_at);
 
 -- 4. MATCHES TABLE (For the 1v1 Random connect)
 create table if not exists public.matches (
@@ -74,6 +100,42 @@ alter table public.matches enable row level security;
 create policy "Users can view their own matches." on public.matches for select using ( auth.uid() = user1_id or auth.uid() = user2_id );
 create policy "Users can create a match." on public.matches for insert with check ( auth.uid() = user1_id );
 create policy "Users can update their matches." on public.matches for update using ( auth.uid() = user1_id or auth.uid() = user2_id );
+
+create index if not exists matches_searching_idx on public.matches (created_at) where status = 'searching';
+
+-- Atomic "find or create" match: prevents two clients from joining the same waiting match
+create or replace function public.try_join_match(p_anonymous boolean)
+returns table (id uuid, user1_id uuid, user2_id uuid, status text, created_existing boolean) as $$
+declare
+  v_match public.matches%rowtype;
+begin
+  update public.matches m
+  set status = 'matched',
+      user2_id = auth.uid(),
+      user2_anonymous = p_anonymous
+  where m.id = (
+    select id from public.matches
+    where status = 'searching' and user1_id <> auth.uid()
+    order by created_at asc
+    limit 1
+    for update skip locked
+  )
+  returning m.* into v_match;
+
+  if found then
+    return query select v_match.id, v_match.user1_id, v_match.user2_id, v_match.status, true;
+    return;
+  end if;
+
+  insert into public.matches (user1_id, user1_anonymous)
+  values (auth.uid(), p_anonymous)
+  returning * into v_match;
+
+  return query select v_match.id, v_match.user1_id, v_match.user2_id, v_match.status, false;
+end;
+$$ language plpgsql security definer;
+
+grant execute on function public.try_join_match(boolean) to authenticated;
 
 -- 5. MATCH PHOTOS TABLE (Ephemeral Snapchat-style photos)
 create table if not exists public.match_photos (
