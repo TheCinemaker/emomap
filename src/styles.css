@@ -359,12 +359,11 @@ body {
 
 /* ── Geo-Anchored Pulse System ── */
 /*
-  --pulse-color     : blended emotion colour (set by JS)
-  --pulse-base-px   : radius in pixels matching real-world ~200m at current zoom (set by JS)
+  --pulse-color    : blended emotion colour (set by JS)
+  --pulse-base-px  : real-world 200m radius in screen pixels (set by JS, updated on zoom)
 */
 .pulse-geo-container {
   pointer-events: none;
-  /* Container is 0×0 and centred on the coordinate thanks to anchor:'center' */
   width: 0;
   height: 0;
   position: relative;
@@ -373,50 +372,40 @@ body {
 /* Solid centre dot */
 .pulse-geo-dot {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: var(--pulse-color);
-  box-shadow: 0 0 6px 2px var(--pulse-color);
-  /* Centre on the anchor point */
-  top: -4px;
-  left: -4px;
+  box-shadow: 0 0 8px 3px var(--pulse-color);
+  top: -5px;
+  left: -5px;
 }
 
-/* Expanding ring — sized by --pulse-base-px */
+/*
+  Ring: starts at the real-world 200m radius size, perfectly centred,
+  then scales out to 2× using transform — this NEVER distorts the circle.
+*/
 .pulse-geo-ring {
   position: absolute;
   border-radius: 50%;
   border: 2px solid var(--pulse-color);
-  /* Start at dot size, expand to 2× base radius */
-  width: 8px;
-  height: 8px;
-  top: -4px;
-  left: -4px;
+  /* Size = diameter, centred on anchor point */
+  width: calc(var(--pulse-base-px, 30px) * 2);
+  height: calc(var(--pulse-base-px, 30px) * 2);
+  top: calc(var(--pulse-base-px, 30px) * -1);
+  left: calc(var(--pulse-base-px, 30px) * -1);
   opacity: 0;
   animation: geo-ripple 3s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
 }
 
 .pulse-geo-ring--delay {
-  animation-delay: 0.8s;
+  animation-delay: 0.9s;
 }
 
 @keyframes geo-ripple {
-  0% {
-    width: 8px;
-    height: 8px;
-    top: -4px;
-    left: -4px;
-    opacity: 0.9;
-  }
-  100% {
-    /* Expand to 2× base radius, keeping centred */
-    width: calc(var(--pulse-base-px, 40px) * 2);
-    height: calc(var(--pulse-base-px, 40px) * 2);
-    top: calc(var(--pulse-base-px, 40px) * -1);
-    left: calc(var(--pulse-base-px, 40px) * -1);
-    opacity: 0;
-  }
+  0%   { transform: scale(0.1); opacity: 0.9; }
+  60%  { opacity: 0.4; }
+  100% { transform: scale(2);   opacity: 0; }
 }
 
 /* Mood Grid Cells (Aggregated Auras) */

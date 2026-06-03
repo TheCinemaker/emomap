@@ -251,17 +251,7 @@ export default function App() {
             moodGridCells={moodGrid.cells}
           />
 
-          {areaMood && areaMood.color && (
-            <div className="mood-aura">
-              <div
-                className="mood-aura-inner"
-                style={{
-                  '--mood-color': areaMood.color,
-                  opacity: 0.25 + 0.5 * areaMood.intensity
-                }}
-              />
-            </div>
-          )}
+          {/* Area mood is shown via moodGrid cells on the map — no viewport overlay needed */}
 
           <div className="status-overlay">
             <div>
