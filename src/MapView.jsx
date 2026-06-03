@@ -1,17 +1,78 @@
 // src/MapView.jsx
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const EMOTION_COLORS = {
-  happy: '#00ff00',
-  bored: '#a0a0a0',
-  stressed: '#ff0000',
-  tired: '#ffff00',
+  happy:     '#00ff00',
+  bored:     '#a0a0a0',
+  stressed:  '#ff0000',
+  tired:     '#ffff00',
   motivated: '#00ccff',
-  love: '#ff00ff',
-  hype: '#bf00ff'
+  love:      '#ff00ff',
+  hype:      '#bf00ff'
 };
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+/** Pixels that correspond to `meters` at a given lat/zoom. */
+function metersToPixels(lat, zoom, meters) {
+  const mpx = (156543.03392 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+  return meters / mpx;
+}
+
+/** Parse any CSS colour → {r,g,b} */
+function cssToRgb(css) {
+  const m = css.match(/\d+/g);
+  if (m && m.length >= 3) return { r: +m[0], g: +m[1], b: +m[2] };
+  const hex = css.replace('#', '');
+  const full = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+  const n = parseInt(full, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+/**
+ * Group pulses that are within `threshDeg` degrees of each other.
+ * Returns clusters: { lat, lng, color (blended), count }
+ */
+function clusterPulses(pulses, threshDeg = 0.005) {
+  const used = new Set();
+  const out  = [];
+
+  for (let i = 0; i < pulses.length; i++) {
+    if (used.has(i)) continue;
+    const group = [pulses[i]];
+    used.add(i);
+
+    for (let j = i + 1; j < pulses.length; j++) {
+      if (used.has(j)) continue;
+      if (
+        Math.abs(pulses[i].lat - pulses[j].lat) < threshDeg &&
+        Math.abs(pulses[i].lng - pulses[j].lng) < threshDeg
+      ) {
+        group.push(pulses[j]);
+        used.add(j);
+      }
+    }
+
+    const lat = group.reduce((s, p) => s + p.lat, 0) / group.length;
+    const lng = group.reduce((s, p) => s + p.lng, 0) / group.length;
+
+    // Blend colours equally
+    let sumR = 0, sumG = 0, sumB = 0;
+    group.forEach(p => {
+      const { r, g, b } = cssToRgb(EMOTION_COLORS[p.emotion] || '#ffffff');
+      sumR += r; sumG += g; sumB += b;
+    });
+    const n = group.length;
+    const color = `rgb(${Math.round(sumR/n)},${Math.round(sumG/n)},${Math.round(sumB/n)})`;
+
+    out.push({ lat, lng, color, count: n });
+  }
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function MapView({
   coords,
@@ -23,14 +84,17 @@ export function MapView({
   moodGridCells,
   onZoomChange
 }) {
-  const mapContainerRef = useRef(null);
-  const mapRef = useRef(null);
-  const userMarkerRef = useRef(null);
-  const personalAuraRef = useRef(null);
-  // Per-instance marker store (was a module-level global → leaked across mounts/HMR)
+  const mapContainerRef    = useRef(null);
+  const mapRef             = useRef(null);
+  const userMarkerRef      = useRef(null);
+  const personalAuraRef    = useRef(null);
   const moodGridMarkersRef = useRef(new Map());
 
-  // Initialize Map
+  // live pulse entries for zoom-resize: [{ marker, lat, el }]
+  const activePulseMarkers = useRef([]);
+  const renderedPulseIds   = useRef(new Set());
+
+  // ── Init map ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
 
@@ -46,15 +110,7 @@ export function MapView({
             attribution: '© OpenStreetMap contributors'
           }
         },
-        layers: [
-          {
-            id: 'osm-tiles',
-            type: 'raster',
-            source: 'osm-tiles',
-            minzoom: 0,
-            maxzoom: 19
-          }
-        ]
+        layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }]
       },
       center: [19, 47],
       zoom: 4,
@@ -67,310 +123,240 @@ export function MapView({
 
     const emitBounds = () => {
       const b = map.getBounds();
-      const bounds = {
-        north: b.getNorth(),
-        south: b.getSouth(),
-        east: b.getEast(),
-        west: b.getWest()
-      };
-      const zoom = map.getZoom();
-      onBoundsChange?.(bounds);
-      onZoomChange?.(zoom);
+      onBoundsChange?.({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() });
+      onZoomChange?.(map.getZoom());
     };
 
     map.on('moveend', emitBounds);
-    map.on('load', emitBounds);
+    map.on('load',    emitBounds);
     map.on('zoomend', emitBounds);
-
     mapRef.current = map;
 
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
+    return () => { map.remove(); mapRef.current = null; };
   }, [onBoundsChange, onZoomChange]);
 
-  // Move/center map
-  // Move/center map on Search Result (viewCenter)
+  // ── Fly to search result ───────────────────────────────────────────────────
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !viewCenter) return;
-
-    map.flyTo({
-      center: [viewCenter.lng, viewCenter.lat],
-      zoom: viewCenter.zoom || 10,
-      speed: 1.2
-    });
+    if (!mapRef.current || !viewCenter) return;
+    mapRef.current.flyTo({ center: [viewCenter.lng, viewCenter.lat], zoom: viewCenter.zoom || 10, speed: 1.2 });
   }, [viewCenter]);
 
-  // Initial Center on User Location (only once)
-  const userInteracted = useRef(false);
+  // ── Auto-centre once on first GPS fix ─────────────────────────────────────
+  const userInteracted    = useRef(false);
   const initialCenterDone = useRef(false);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-
-    const onInteraction = () => {
-      userInteracted.current = true;
-    };
-
-    map.on('dragstart', onInteraction);
-    map.on('zoomstart', onInteraction);
-    map.on('pitchstart', onInteraction);
-
-    return () => {
-      map.off('dragstart', onInteraction);
-      map.off('zoomstart', onInteraction);
-      map.off('pitchstart', onInteraction);
-    };
+    const onI = () => { userInteracted.current = true; };
+    map.on('dragstart', onI);
+    map.on('zoomstart', onI);
+    return () => { map.off('dragstart', onI); map.off('zoomstart', onI); };
   }, []);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !coords) return;
-
-    // Only center if we haven't done it yet and no search result is active
-    // AND the user hasn't interacted with the map yet
-    if (!viewCenter && !userInteracted.current && !initialCenterDone.current) {
-      map.flyTo({
-        center: [coords.lng, coords.lat],
-        zoom: 12,
-        speed: 1.2
-      });
-      initialCenterDone.current = true;
-    }
+    if (!map || !coords || viewCenter || userInteracted.current || initialCenterDone.current) return;
+    map.flyTo({ center: [coords.lng, coords.lat], zoom: 12, speed: 1.2 });
+    initialCenterDone.current = true;
   }, [coords, viewCenter]);
 
-  // User Marker
+  // ── User dot marker ────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !coords) return;
-
     if (!userMarkerRef.current) {
       const el = document.createElement('div');
       el.className = 'user-marker';
       userMarkerRef.current = new maplibregl.Marker({ element: el })
-        .setLngLat([coords.lng, coords.lat])
-        .addTo(map);
+        .setLngLat([coords.lng, coords.lat]).addTo(map);
     } else {
       userMarkerRef.current.setLngLat([coords.lng, coords.lat]);
     }
   }, [coords]);
 
-  // Helper to calculate pixel size for a given radius in meters
-  const getPixelSize = (lat, zoom, meters) => {
-    const metersPerPixel = 156543.03392 * Math.cos((lat * Math.PI) / 180) / Math.pow(2, zoom);
-    return meters / metersPerPixel;
-  };
-
-  // Personal Aura
+  // ── Personal Aura (zoom-aware size) ───────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    // Use personalAuraLocation if available, otherwise fallback to coords (only if no vote yet)
-    const targetLoc = personalAuraLocation;
+    const loc = personalAuraLocation;
 
-    if (!map || !targetLoc) {
-      // If we have no vote location, remove aura
-      if (personalAuraRef.current) {
-        personalAuraRef.current.remove();
-        personalAuraRef.current = null;
-      }
+    if (!map || !loc || !personalMood?.color || personalMood.total === 0) {
+      if (personalAuraRef.current) { personalAuraRef.current.remove(); personalAuraRef.current = null; }
       return;
     }
 
-    if (!personalMood || !personalMood.color || personalMood.total === 0) {
-      if (personalAuraRef.current) {
-        personalAuraRef.current.remove();
-        personalAuraRef.current = null;
-      }
-      return;
-    }
-
-    const updateAuraVisuals = () => {
+    const updateAura = () => {
       if (!personalAuraRef.current) return;
-
-      const zoom = map.getZoom();
-      // Calculate size for ~2km diameter (1000m radius * 2)
-      const sizePx = getPixelSize(targetLoc.lat, zoom, 2000);
-
-      const el = personalAuraRef.current.getElement().querySelector('.personal-aura-inner');
-      if (el) {
-        el.style.setProperty('--personal-color', personalMood.color);
-        el.style.opacity = String(Math.min(1, 0.4 + 0.6 * personalMood.intensity));
-        el.style.width = `${sizePx}px`;
-        el.style.height = `${sizePx}px`;
+      const px = metersToPixels(loc.lat, map.getZoom(), 2000);
+      const inner = personalAuraRef.current.getElement().querySelector('.personal-aura-inner');
+      if (inner) {
+        inner.style.setProperty('--personal-color', personalMood.color);
+        inner.style.opacity = String(Math.min(1, 0.4 + 0.6 * personalMood.intensity));
+        inner.style.width  = `${px}px`;
+        inner.style.height = `${px}px`;
       }
     };
 
     if (!personalAuraRef.current) {
       const container = document.createElement('div');
       container.className = 'personal-aura';
-      // Center the inner element
-      container.style.display = 'flex';
-      container.style.justifyContent = 'center';
-      container.style.alignItems = 'center';
-
       const inner = document.createElement('div');
       inner.className = 'personal-aura-inner';
       container.appendChild(inner);
-
-      const marker = new maplibregl.Marker({ element: container })
-        .setLngLat([targetLoc.lng, targetLoc.lat])
-        .addTo(map);
-
-      personalAuraRef.current = marker;
+      personalAuraRef.current = new maplibregl.Marker({ element: container })
+        .setLngLat([loc.lng, loc.lat]).addTo(map);
     } else {
-      personalAuraRef.current.setLngLat([targetLoc.lng, targetLoc.lat]);
+      personalAuraRef.current.setLngLat([loc.lng, loc.lat]);
     }
 
-    updateAuraVisuals();
-
-    // Update size on zoom
-    const onZoom = () => updateAuraVisuals();
-    map.on('zoom', onZoom);
-
-    return () => {
-      map.off('zoom', onZoom);
-    };
+    updateAura();
+    map.on('zoom', updateAura);
+    return () => map.off('zoom', updateAura);
   }, [personalAuraLocation, personalMood]);
 
-  // Pulse Effects - Optimized
-  const renderedPulses = useRef(new Set());
-
+  // ── Pulse zoom-resize listener ─────────────────────────────────────────────
   useEffect(() => {
-    if (!mapRef.current || !pulses || pulses.length === 0) return;
     const map = mapRef.current;
+    if (!map) return;
 
-    pulses.forEach((p) => {
-      if (renderedPulses.current.has(p.id)) return; // Skip if already rendered
+    const onZoom = () => {
+      const zoom = map.getZoom();
+      activePulseMarkers.current.forEach(({ lat, el }) => {
+        const basePx = Math.min(160, Math.max(6, metersToPixels(lat, zoom, 200)));
+        el.style.setProperty('--pulse-base-px', `${basePx}px`);
+      });
+    };
 
-      const lat = Number(p.lat);
-      const lng = Number(p.lng);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+    map.on('zoom', onZoom);
+    return () => map.off('zoom', onZoom);
+  }, []);
 
-      renderedPulses.current.add(p.id);
+  // ── PULSES ─────────────────────────────────────────────────────────────────
+  // Each pulse is a geo-anchored MapLibre Marker (anchor:'center').
+  // Size = real-world 200 m radius → pixels at current zoom.
+  // Nearby pulses are clustered and their colours blended.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !pulses || pulses.length === 0) return;
+
+    // Only fresh, valid pulses
+    const fresh = pulses.filter(p => {
+      if (renderedPulseIds.current.has(p.id)) return false;
+      return !Number.isNaN(Number(p.lat)) && !Number.isNaN(Number(p.lng));
+    });
+    if (fresh.length === 0) return;
+
+    const clusters = clusterPulses(fresh);
+    const zoom = map.getZoom();
+
+    clusters.forEach(({ lat, lng, color }) => {
+      // Mark all contributing pulse IDs as rendered
+      fresh.forEach(p => {
+        if (Math.abs(p.lat - lat) < 0.005 && Math.abs(p.lng - lng) < 0.005) {
+          renderedPulseIds.current.add(p.id);
+        }
+      });
+
+      const basePx = Math.min(160, Math.max(6, metersToPixels(lat, zoom, 200)));
 
       const container = document.createElement('div');
-      container.className = 'pulse-marker-container';
+      container.className = 'pulse-geo-container';
 
-      const el = document.createElement('div');
-      el.className = 'pulse-marker';
-      container.appendChild(el);
+      const dot   = document.createElement('div');
+      dot.className = 'pulse-geo-dot';
 
-      const color = EMOTION_COLORS[p.emotion] || '#fff';
-      el.style.setProperty('--pulse-color', color);
+      const ring1 = document.createElement('div');
+      ring1.className = 'pulse-geo-ring';
 
-      const marker = new maplibregl.Marker({ element: container })
+      const ring2 = document.createElement('div');
+      ring2.className = 'pulse-geo-ring pulse-geo-ring--delay';
+
+      container.appendChild(dot);
+      container.appendChild(ring1);
+      container.appendChild(ring2);
+
+      container.style.setProperty('--pulse-color', color);
+      container.style.setProperty('--pulse-base-px', `${basePx}px`);
+
+      // anchor:'center' → the marker's origin point sits exactly at [lng, lat]
+      const marker = new maplibregl.Marker({ element: container, anchor: 'center' })
         .setLngLat([lng, lat])
         .addTo(map);
 
-      // Remove after animation
+      const entry = { marker, lat, el: container };
+      activePulseMarkers.current.push(entry);
+
       setTimeout(() => {
         marker.remove();
-        renderedPulses.current.delete(p.id); // Cleanup ID from set
-      }, 2000); // Match CSS animation duration
+        renderedPulseIds.current.delete; // allow re-use after 3 s
+        activePulseMarkers.current = activePulseMarkers.current.filter(e => e !== entry);
+      }, 3000);
     });
   }, [pulses]);
 
-  // Mood Grid Cells
+  // ── Mood Grid Cells ────────────────────────────────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const markers = moodGridMarkersRef.current;
-
     const visibleKeys = new Set();
-    const currentZoom = map.getZoom();
+    const zoom = map.getZoom();
 
-    moodGridCells?.forEach((cell) => {
+    moodGridCells?.forEach(cell => {
       const key = cell.key;
       visibleKeys.add(key);
-
-      const pixelSize = getPixelSize(cell.lat, currentZoom, 20000);
+      const px = metersToPixels(cell.lat, zoom, 20000);
 
       if (markers.has(key)) {
-        const marker = markers.get(key);
-        marker.setLngLat([cell.lng, cell.lat]);
-
-        const el = marker.getElement().querySelector('.mood-grid-cell-inner');
-        if (el) {
-          el.style.setProperty('--cell-color', cell.color);
-          el.style.opacity = String(0.2 + 0.6 * cell.intensity);
-          el.style.width = `${pixelSize}px`;
-          el.style.height = `${pixelSize}px`;
+        const m = markers.get(key);
+        m.setLngLat([cell.lng, cell.lat]);
+        const inner = m.getElement().querySelector('.mood-grid-cell-inner');
+        if (inner) {
+          inner.style.setProperty('--cell-color', cell.color);
+          inner.style.opacity = String(0.2 + 0.6 * cell.intensity);
+          inner.style.width  = `${px}px`;
+          inner.style.height = `${px}px`;
         }
       } else {
         const container = document.createElement('div');
         container.className = 'mood-grid-cell-container';
-        container.style.display = 'flex';
-        container.style.justifyContent = 'center';
-        container.style.alignItems = 'center';
-
         const inner = document.createElement('div');
         inner.className = 'mood-grid-cell-inner';
-        container.appendChild(inner);
-
         inner.style.setProperty('--cell-color', cell.color);
         inner.style.opacity = String(0.2 + 0.6 * cell.intensity);
-        inner.style.width = `${pixelSize}px`;
-        inner.style.height = `${pixelSize}px`;
-
-        const marker = new maplibregl.Marker({ element: container })
-          .setLngLat([cell.lng, cell.lat])
-          .addTo(map);
-
-        markers.set(key, marker);
+        inner.style.width  = `${px}px`;
+        inner.style.height = `${px}px`;
+        container.appendChild(inner);
+        markers.set(key, new maplibregl.Marker({ element: container })
+          .setLngLat([cell.lng, cell.lat]).addTo(map));
       }
     });
 
-    markers.forEach((marker, key) => {
-      if (!visibleKeys.has(key)) {
-        marker.remove();
-        markers.delete(key);
-      }
+    markers.forEach((m, key) => {
+      if (!visibleKeys.has(key)) { m.remove(); markers.delete(key); }
     });
   }, [moodGridCells]);
 
-  // On unmount: clean up all grid markers
   useEffect(() => {
     const markers = moodGridMarkersRef.current;
-    return () => {
-      markers.forEach((m) => m.remove());
-      markers.clear();
-    };
+    return () => { markers.forEach(m => m.remove()); markers.clear(); };
   }, []);
 
-  // Zoom controls
-  function handleZoomIn() {
-    mapRef.current?.zoomIn();
-  }
-  function handleZoomOut() {
-    mapRef.current?.zoomOut();
-  }
-
+  // ── Controls ───────────────────────────────────────────────────────────────
   function handleBackToMe() {
-    const map = mapRef.current;
-    if (!map || !coords) return;
-
-    userInteracted.current = false; // Reset interaction flag
-    map.flyTo({
-      center: [coords.lng, coords.lat],
-      zoom: 12,
-      speed: 1.2
-    });
+    if (!mapRef.current || !coords) return;
+    userInteracted.current = false;
+    mapRef.current.flyTo({ center: [coords.lng, coords.lat], zoom: 12, speed: 1.2 });
   }
 
   return (
     <div className="map-container" ref={mapContainerRef} style={{ width: '100%', height: '100%' }}>
       <div className="map-zoom-controls">
-        <button onClick={handleZoomIn}>+</button>
-        <button onClick={handleZoomOut}>−</button>
+        <button onClick={() => mapRef.current?.zoomIn()}>+</button>
+        <button onClick={() => mapRef.current?.zoomOut()}>−</button>
       </div>
-
       {coords && (
-        <button className="back-to-me-btn" onClick={handleBackToMe} title="Back to Me">
-          ⌖
-        </button>
+        <button className="back-to-me-btn" onClick={handleBackToMe} title="Back to Me">⌖</button>
       )}
     </div>
   );
