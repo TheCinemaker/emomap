@@ -523,6 +523,44 @@ body {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.auth-input-wrap {
+  position: relative;
+}
+
+.auth-input-wrap input {
+  width: 100%;
+  box-sizing: border-box;
+  padding-right: 34px;
+}
+
+.auth-input-status {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.auth-input-wrap.status-checking input { border-color: rgba(99, 102, 241, 0.6); }
+.auth-input-wrap.status-checking .auth-input-status { color: #98a0b3; }
+
+.auth-input-wrap.status-available input { border-color: #22c55e; }
+.auth-input-wrap.status-available .auth-input-status { color: #22c55e; }
+
+.auth-input-wrap.status-taken input,
+.auth-input-wrap.status-invalid input { border-color: #ef4444; }
+.auth-input-wrap.status-taken .auth-input-status,
+.auth-input-wrap.status-invalid .auth-input-status { color: #ef4444; }
+
+.auth-field-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
 .auth-submit {
   margin-top: 6px;
   background: linear-gradient(180deg, #6366f1 0%, #4f46e5 100%);
