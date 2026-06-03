@@ -16,6 +16,7 @@ import RandomMatch from './components/RandomMatch';
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000;
+const PERSONAL_AURA_LIFETIME_MS = 3 * 60 * 1000; // 180s — own pulse stays this long after voting
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 
 export default function App() {
@@ -49,6 +50,13 @@ export default function App() {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Personal aura lifetime: 180s after a vote, then hide it
+  useEffect(() => {
+    if (!lastVoteAt) return;
+    const t = setTimeout(() => setLastVoteLocation(null), PERSONAL_AURA_LIFETIME_MS);
+    return () => clearTimeout(t);
+  }, [lastVoteAt]);
 
   const stats = useEmotionsStats(debouncedBounds, SESSION_ID);
   const personalMood = usePersonalMood(lastVoteLocation || coords, SESSION_ID);
@@ -208,15 +216,21 @@ export default function App() {
             type="button"
             className="app-icon-btn"
             onClick={() => setShowInfo(s => !s)}
-            aria-label="Info & search"
+            aria-label="Info"
             title="Info"
-          >ⓘ</button>
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm1.2 11h-2.4a.8.8 0 0 1 0-1.6h.4v-4.4h-.4a.8.8 0 0 1 0-1.6h1.6c.44 0 .8.36.8.8v5.2h.4a.8.8 0 0 1 0 1.6Z"/>
+            </svg>
+          </button>
           <button
             type="button"
             className="app-pill-btn"
             onClick={() => setShowRandomMatch(true)}
           >
-            <span aria-hidden>✨</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 1.5 14 8l6.5 2L14 12l-2 6.5L10 12 3.5 10 10 8l2-6.5Z"/>
+            </svg>
             <span>Match</span>
           </button>
         </div>
