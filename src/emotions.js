@@ -1,9 +1,20 @@
+import {
+  IconHappy,
+  IconBored,
+  IconStressed,
+  IconTired,
+  IconMotivated,
+  IconLove,
+  IconHype,
+} from './components/EmotionIcons';
+
+// Apple System palette (iOS dark-mode variants)
 export const EMOTIONS = [
-  { id: 'happy', label: '🟢', name: 'Euphoria', color: '#00ff00' }, // Neon Green
-  { id: 'bored', label: '⚪', name: 'Null', color: '#a0a0a0' }, // Grey
-  { id: 'stressed', label: '🔴', name: 'Panic', color: '#ff0000' }, // Neon Red
-  { id: 'tired', label: '🟡', name: 'Low Bat', color: '#ffff00' }, // Neon Yellow
-  { id: 'motivated', label: '🔵', name: 'Focus', color: '#00ccff' }, // Neon Blue
-  { id: 'love', label: '🟣', name: 'Sync', color: '#ff00ff' }, // Neon Pink
-  { id: 'hype', label: '⚡', name: 'Overdrive', color: '#bf00ff' }, // Neon Purple
+  { id: 'happy',     name: 'Vidám',    color: '#34c759', Icon: IconHappy },
+  { id: 'bored',     name: 'Unalom',   color: '#8e8e93', Icon: IconBored },
+  { id: 'stressed',  name: 'Stressz',  color: '#ff3b30', Icon: IconStressed },
+  { id: 'tired',     name: 'Fáradt',   color: '#ffcc00', Icon: IconTired },
+  { id: 'motivated', name: 'Fókusz',   color: '#0a84ff', Icon: IconMotivated },
+  { id: 'love',      name: 'Szeretet', color: '#ff2d55', Icon: IconLove },
+  { id: 'hype',      name: 'Pörgés',   color: '#bf5af2', Icon: IconHype },
 ];

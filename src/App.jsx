@@ -287,6 +287,7 @@ export default function App() {
         <div className="emotion-grid">
           {EMOTIONS.map((e) => {
             const disabled = !canVote || !coords || !userId;
+            const Icon = e.Icon;
             return (
               <button
                 key={e.id}
@@ -295,8 +296,9 @@ export default function App() {
                 onClick={() => handleVote(e.id)}
                 disabled={disabled}
                 style={{ '--chip-color': e.color }}
+                aria-label={e.name}
               >
-                <span className="emotion-chip-emoji">{e.label}</span>
+                <span className="emotion-chip-icon"><Icon width={22} height={22} /></span>
                 <span className="emotion-chip-label">{e.name}</span>
               </button>
             );

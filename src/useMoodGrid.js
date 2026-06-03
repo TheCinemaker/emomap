@@ -5,13 +5,13 @@ import { supabase } from './supabaseClient';
 const MAX_FETCH_LIMIT = 20000;
 
 const EMOTION_RGB = {
-  happy: [0, 255, 0],
-  bored: [160, 160, 160],
-  stressed: [255, 0, 0],
-  tired: [255, 255, 0],
-  motivated: [0, 204, 255],
-  love: [255, 0, 255],
-  hype: [191, 0, 255],
+  happy:     [52, 199, 89],
+  bored:     [142, 142, 147],
+  stressed:  [255, 59, 48],
+  tired:     [255, 204, 0],
+  motivated: [10, 132, 255],
+  love:      [255, 45, 85],
+  hype:      [191, 90, 242],
 };
 
 function calculateCellSize(zoomLevel) {

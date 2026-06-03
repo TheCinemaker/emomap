@@ -4,13 +4,13 @@ import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 const EMOTION_COLORS = {
-  happy:     '#00ff00',
-  bored:     '#a0a0a0',
-  stressed:  '#ff0000',
-  tired:     '#ffff00',
-  motivated: '#00ccff',
-  love:      '#ff00ff',
-  hype:      '#bf00ff'
+  happy:     '#34c759',
+  bored:     '#8e8e93',
+  stressed:  '#ff3b30',
+  tired:     '#ffcc00',
+  motivated: '#0a84ff',
+  love:      '#ff2d55',
+  hype:      '#bf5af2'
 };
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ export function MapView({
     const onZoom = () => {
       const zoom = map.getZoom();
       activePulseMarkers.current.forEach(({ lat, el }) => {
-        const basePx = Math.min(160, Math.max(6, metersToPixels(lat, zoom, 200)));
+        const basePx = Math.min(48, Math.max(4, metersToPixels(lat, zoom, 80)));
         el.style.setProperty('--pulse-base-px', `${basePx}px`);
       });
     };
@@ -257,7 +257,7 @@ export function MapView({
         }
       });
 
-      const basePx = Math.min(160, Math.max(6, metersToPixels(lat, zoom, 200)));
+      const basePx = Math.min(48, Math.max(4, metersToPixels(lat, zoom, 80)));
 
       const container = document.createElement('div');
       container.className = 'pulse-geo-container';

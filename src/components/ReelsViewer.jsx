@@ -23,35 +23,47 @@ export default function ReelsViewer({ session }) {
   }, []);
 
   const fetchReels = async () => {
-    // Only fetch reels that haven't expired
+    // Step 1: fetch reels (no join — avoids FK/PostgREST issues)
     const { data, error } = await supabase
       .from('reels')
-      .select(`
-        id, image_url, created_at, user_id,
-        profiles:user_id ( username, avatar_url )
-      `)
+      .select('id, image_url, created_at, user_id')
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching reels:', error);
-    } else {
-      // Group by user
-      const grouped = data.reduce((acc, reel) => {
-        const uid = reel.user_id;
-        if (!acc[uid]) {
-          acc[uid] = {
-            user_id: uid,
-            username: reel.profiles?.username || 'Unknown',
-            avatar: reel.profiles?.avatar_url || 'https://api.dicebear.com/9.x/bottts-neutral/svg?seed=' + uid,
-            items: []
-          };
-        }
-        acc[uid].items.push(reel);
-        return acc;
-      }, {});
-      setReels(Object.values(grouped));
+      return;
     }
+    if (!data || data.length === 0) { setReels([]); return; }
+
+    // Step 2: fetch profiles for the unique user IDs
+    const userIds = [...new Set(data.map(r => r.user_id))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', userIds);
+
+    const profileMap = (profiles || []).reduce((acc, p) => {
+      acc[p.id] = p;
+      return acc;
+    }, {});
+
+    // Group by user
+    const grouped = data.reduce((acc, reel) => {
+      const uid = reel.user_id;
+      if (!acc[uid]) {
+        const prof = profileMap[uid] || {};
+        acc[uid] = {
+          user_id: uid,
+          username: prof.username || 'Ismeretlen',
+          avatar: prof.avatar_url || `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${uid}`,
+          items: []
+        };
+      }
+      acc[uid].items.push(reel);
+      return acc;
+    }, {});
+    setReels(Object.values(grouped));
   };
 
   const handleUploadReel = async (e) => {
