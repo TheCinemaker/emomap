@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 const REELS_LIMIT = 15;
 const EXPIRES_MINUTES = 20;
 
-export default function ReelsViewer({ session }) {
+export default function ReelsViewer({ session, t }) {
   const [reels, setReels]           = useState([]);
   const [uploading, setUploading]   = useState(false);
   const [uploadError, setUploadError] = useState(null);
@@ -35,9 +35,9 @@ export default function ReelsViewer({ session }) {
 
     setReels(data.map(r => ({
       ...r,
-      username: pm[r.user_id]?.username || 'Ismeretlen'
+      username: pm[r.user_id]?.username || t('reels_unknown')
     })));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchReels();
@@ -145,11 +145,11 @@ export default function ReelsViewer({ session }) {
         <div className="reels-scroll">
 
           {/* Upload button */}
-          <label className="reel-thumb reel-thumb--add" title="Story hozzáadása">
+          <label className="reel-thumb reel-thumb--add" title={t('reels_add_story')}>
             <div className="reel-thumb-img reel-thumb-img--add">
               {uploading ? <span className="reel-spinner" /> : <span>+</span>}
             </div>
-            <span className="reel-label">Te</span>
+            <span className="reel-label">{t('reels_you')}</span>
             <input
               type="file"
               accept="image/*"

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useLang, LANGUAGES } from '../i18n';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
 export default function Auth() {
+  const { lang, setLang, t } = useLang();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,30 +46,30 @@ export default function Auth() {
   const friendlyError = (err) => {
     const msg = String(err?.message || err || '');
     if (/already registered|already exists|duplicate.*email/i.test(msg)) {
-      return 'Ez az email cím már regisztrálva van.';
+      return t('auth_err_email_taken');
     }
     if (/Invalid login credentials/i.test(msg)) {
-      return 'Hibás felhasználónév vagy jelszó.';
+      return t('auth_err_bad_credentials');
     }
     if (/Password should be at least/i.test(msg)) {
-      return 'A jelszónak legalább 6 karakter hosszúnak kell lennie.';
+      return t('auth_err_password_short');
     }
     if (/profiles_username|unique.*username/i.test(msg)) {
-      return 'Ez a felhasználónév már foglalt.';
+      return t('auth_err_username_taken');
     }
-    return msg || 'Hiba történt.';
+    return msg || t('auth_err_bad_credentials');
   };
 
   const handleSignUp = async () => {
     const u = username.trim();
     if (!USERNAME_RE.test(u)) {
-      throw new Error('A felhasználónév 3–20 karakter, csak betű/szám/_ lehet.');
+      throw new Error(t('auth_err_username_format'));
     }
     if (usernameStatus === 'taken') {
-      throw new Error('Ez a felhasználónév már foglalt.');
+      throw new Error(t('auth_err_username_taken'));
     }
     if (password.length < 6) {
-      throw new Error('A jelszónak legalább 6 karakter hosszúnak kell lennie.');
+      throw new Error(t('auth_err_password_short'));
     }
 
     // Race-safe re-check just before submit
@@ -78,7 +80,7 @@ export default function Auth() {
       .limit(1);
     if (existing && existing.length > 0) {
       setUsernameStatus('taken');
-      throw new Error('Ez a felhasználónév már foglalt.');
+      throw new Error(t('auth_err_username_taken'));
     }
 
     const { error: signUpError } = await supabase.auth.signUp({
@@ -88,18 +90,18 @@ export default function Auth() {
     });
     if (signUpError) throw signUpError;
 
-    setInfo('Sikeres regisztráció! Erősítsd meg az emailedet a beérkezett levélben, aztán lépj be.');
+    setInfo(t('auth_success_signup'));
   };
 
   const handleSignIn = async () => {
     const u = username.trim();
-    if (!u) throw new Error('Add meg a felhasználóneved.');
+    if (!u) throw new Error(t('auth_err_username_required'));
 
     // Look up the email tied to this username (server-side RPC)
     const { data: foundEmail, error: lookupErr } = await supabase
       .rpc('email_for_username', { p_username: u });
     if (lookupErr) throw lookupErr;
-    if (!foundEmail) throw new Error('Invalid login credentials'); // friendlyError → "Hibás felhasználónév vagy jelszó."
+    if (!foundEmail) throw new Error('Invalid login credentials'); // → friendlyError translates this
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: foundEmail,
@@ -133,12 +135,25 @@ export default function Auth() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
+        <div className="auth-lang-row">
+          {LANGUAGES.map((code) => (
+            <button
+              key={code}
+              type="button"
+              className={`info-lang-btn${lang === code ? ' is-active' : ''}`}
+              onClick={() => setLang(code)}
+            >
+              {code.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
         <div className="auth-brand">
           <span className="auth-logo" aria-hidden>🌍</span>
           <h1 className="auth-brand-name">EmoMap</h1>
         </div>
         <p className="auth-tagline">
-          {isSignUp ? 'Hozz létre egy fiókot' : 'Üdv újra!'}
+          {isSignUp ? t('auth_tagline_signup') : t('auth_tagline_signin')}
         </p>
 
         {error && <div className="auth-alert auth-alert-error">{error}</div>}
@@ -148,10 +163,10 @@ export default function Auth() {
           {/* Email — only on signup */}
           {isSignUp && (
             <label className="auth-field">
-              <span>Email</span>
+              <span>{t('auth_email')}</span>
               <input
                 type="email"
-                placeholder="te@email.hu"
+                placeholder="you@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -162,13 +177,13 @@ export default function Auth() {
 
           {/* Username — both sign-up and sign-in */}
           <label className="auth-field">
-            <span>Felhasználónév</span>
+            <span>{t('auth_username')}</span>
             {isSignUp ? (
               <>
                 <div className={`auth-input-wrap status-${usernameStatus}`}>
                   <input
                     type="text"
-                    placeholder="pl. szilveszter_42"
+                    placeholder={t('auth_username_placeholder_signup')}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
@@ -184,17 +199,17 @@ export default function Auth() {
                   </span>
                 </div>
                 <small className="auth-field-hint">
-                  {usernameStatus === 'taken' && 'Ez a név már foglalt.'}
-                  {usernameStatus === 'invalid' && '3–20 karakter, csak betű, szám, _.'}
-                  {usernameStatus === 'available' && 'Szabad ✨'}
-                  {usernameStatus === 'checking' && 'Ellenőrzés…'}
-                  {usernameStatus === 'idle' && '3–20 karakter, csak betű, szám, _.'}
+                  {usernameStatus === 'taken' && t('auth_username_taken')}
+                  {usernameStatus === 'invalid' && t('auth_username_invalid')}
+                  {usernameStatus === 'available' && t('auth_username_available')}
+                  {usernameStatus === 'checking' && t('auth_username_checking')}
+                  {usernameStatus === 'idle' && t('auth_username_invalid')}
                 </small>
               </>
             ) : (
               <input
                 type="text"
-                placeholder="felhasználónév"
+                placeholder={t('auth_username_placeholder_signin')}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -204,7 +219,7 @@ export default function Auth() {
           </label>
 
           <label className="auth-field">
-            <span>Jelszó</span>
+            <span>{t('auth_password')}</span>
             <input
               type="password"
               placeholder="••••••••"
@@ -217,11 +232,11 @@ export default function Auth() {
           </label>
 
           <button className="auth-submit" type="submit" disabled={!canSubmit}>
-            {loading ? 'Egy pillanat…' : (isSignUp ? 'Regisztráció' : 'Belépés')}
+            {loading ? t('auth_submit_loading') : (isSignUp ? t('auth_submit_signup') : t('auth_submit_signin'))}
           </button>
         </form>
 
-        <div className="auth-divider"><span>vagy</span></div>
+        <div className="auth-divider"><span>{t('auth_or')}</span></div>
 
         <button
           type="button"
@@ -233,12 +248,12 @@ export default function Auth() {
             setUsernameStatus('idle');
           }}
         >
-          {isSignUp ? 'Van már fiókod? Lépj be' : 'Még nincs fiókod? Regisztrálj'}
+          {isSignUp ? t('auth_switch_to_signin') : t('auth_switch_to_signup')}
         </button>
       </div>
 
       <p className="auth-footer-note">
-        Bejelentkezés felhasználónévvel. Regisztrációhoz email is kell — erre kapsz megerősítést.
+        {t('auth_footer_note')}
       </p>
     </div>
   );

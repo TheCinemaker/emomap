@@ -9,15 +9,30 @@ import { usePersonalMood } from './usePersonalMood';
 import { useGeolocation } from './useGeolocation';
 import { useMoodGrid } from './useMoodGrid';
 import { useDebounce } from './useDebounce';
+import { useLang, LANGUAGES } from './i18n';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
-import RandomMatch from './components/RandomMatch';
+// RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
+// shelved per the product-risk call (moderation/legal exposure), kept in the
+// codebase for a possible later, non-random, safety-first redesign.
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000;
 const PERSONAL_AURA_LIFETIME_MS = 3 * 60 * 1000; // 180s — own pulse stays this long after voting
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+const VOTE_JITTER_METERS = 150; // privacy: never store the user's exact GPS point
+
+// Random offset within VOTE_JITTER_METERS so stored pins can't be used to pinpoint
+// a real address (e.g. "always stressed outside this one clinic").
+function jitterCoords(lat, lng) {
+  const earthRadius = 6371000;
+  const angle = Math.random() * 2 * Math.PI;
+  const dist = Math.random() * VOTE_JITTER_METERS;
+  const dLat = (dist * Math.cos(angle)) / earthRadius * (180 / Math.PI);
+  const dLng = (dist * Math.sin(angle)) / (earthRadius * Math.cos(lat * Math.PI / 180)) * (180 / Math.PI);
+  return { lat: lat + dLat, lng: lng + dLng };
+}
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -33,8 +48,9 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
-  const [showRandomMatch, setShowRandomMatch] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+
+  const { lang, setLang, t } = useLang();
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [lastVoteLocation, setLastVoteLocation] = useState(null);
@@ -54,8 +70,8 @@ export default function App() {
   // Personal aura lifetime: 180s after a vote, then hide it
   useEffect(() => {
     if (!lastVoteAt) return;
-    const t = setTimeout(() => setLastVoteLocation(null), PERSONAL_AURA_LIFETIME_MS);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setLastVoteLocation(null), PERSONAL_AURA_LIFETIME_MS);
+    return () => clearTimeout(timer);
   }, [lastVoteAt]);
 
   const stats = useEmotionsStats(debouncedBounds, SESSION_ID);
@@ -134,17 +150,18 @@ export default function App() {
     if (!canVote || !coords || !userId) return;
 
     const tempId = `user_${userId}_${Date.now()}`;
+    const { lat, lng } = jitterCoords(coords.lat, coords.lng);
     const event = {
       user_id: userId,
       session_id: SESSION_ID,
       emotion: emotionId,
-      lat: coords.lat,
-      lng: coords.lng
+      lat,
+      lng
     };
 
     const optimisticEvent = { ...event, id: tempId, inserted_at: new Date().toISOString() };
     setPulseBatch(prev => [...prev, optimisticEvent].slice(-200));
-    setLastVoteLocation({ lat: coords.lat, lng: coords.lng });
+    setLastVoteLocation({ lat, lng });
     setLastVoteAt(Date.now());
     setLastVotedEmotion(emotionId);
     setTimeout(() => setLastVotedEmotion(null), 1000);
@@ -174,20 +191,20 @@ export default function App() {
       const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
       if (!res.ok) throw new Error('Search failed: ' + res.status);
       const data = await res.json();
-      if (!data || !data.length) { setSearchError('Nincs találat'); return; }
+      if (!data || !data.length) { setSearchError(t('search_no_result')); return; }
       const place = data[0];
       const lat = parseFloat(place.lat);
       const lng = parseFloat(place.lon);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) { setSearchError('Hibás koordináta'); return; }
+      if (Number.isNaN(lat) || Number.isNaN(lng)) { setSearchError(t('search_bad_coords')); return; }
       setViewCenter({ lat, lng, zoom: 11 });
       setShowInfo(false);
     } catch (err) {
       console.error('City search error:', err);
-      setSearchError('Keresési hiba');
+      setSearchError(t('search_error'));
     } finally {
       setSearchLoading(false);
     }
-  }, [searchTerm]);
+  }, [searchTerm, t]);
 
   const remainingSec = Math.ceil(Math.max(0, RATE_LIMIT_MS - msSinceLastVote) / 1000);
   const handleLoadingComplete = useCallback(() => setIsLoading(false), []);
@@ -198,9 +215,9 @@ export default function App() {
   if (!session) return <Auth />;
 
   const promptText =
-    !gpsAllowed ? 'Engedélyezd a helymeghatározást a szavazáshoz'
-    : canVote ? 'Hogy érzed magad most?'
-    : `Új szavazat: ${remainingSec}s múlva`;
+    !gpsAllowed ? t('vote_prompt_need_location')
+    : canVote ? t('vote_prompt_ready')
+    : t('vote_prompt_cooldown', { s: remainingSec });
 
   return (
     <div className="app-shell">
@@ -216,28 +233,16 @@ export default function App() {
             type="button"
             className="app-icon-btn"
             onClick={() => setShowInfo(s => !s)}
-            aria-label="Info"
-            title="Info"
+            aria-label={t('info')}
+            title={t('info')}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm1.2 11h-2.4a.8.8 0 0 1 0-1.6h.4v-4.4h-.4a.8.8 0 0 1 0-1.6h1.6c.44 0 .8.36.8.8v5.2h.4a.8.8 0 0 1 0 1.6Z"/>
             </svg>
           </button>
-          <button
-            type="button"
-            className="app-pill-btn"
-            onClick={() => setShowRandomMatch(true)}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 1.5 14 8l6.5 2L14 12l-2 6.5L10 12 3.5 10 10 8l2-6.5Z"/>
-            </svg>
-            <span>Match</span>
-          </button>
         </div>
-        <ReelsViewer session={session} />
+        <ReelsViewer session={session} t={t} />
       </header>
-
-      {showRandomMatch && <RandomMatch session={session} onClose={() => setShowRandomMatch(false)} />}
 
       <main className="app-map-area">
         <MapView
@@ -252,27 +257,39 @@ export default function App() {
         />
 
         {showInfo && (
-          <div className="info-panel" role="dialog" aria-label="Info">
-            <div className="info-panel-row">
-              <strong>User</strong>
-              <span className="info-panel-mono">{userId ? userId.slice(0, 8) + '…' : '—'}</span>
-              <button type="button" className="info-panel-link" onClick={handleLogout}>Kilépés</button>
+          <div className="info-panel" role="dialog" aria-label={t('info')}>
+            <div className="info-panel-row info-lang-row">
+              {LANGUAGES.map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  className={`info-lang-btn${lang === code ? ' is-active' : ''}`}
+                  onClick={() => setLang(code)}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
             </div>
             <div className="info-panel-row">
-              <strong>Helyzet</strong>
+              <strong>{t('user')}</strong>
+              <span className="info-panel-mono">{userId ? userId.slice(0, 8) + '…' : '—'}</span>
+              <button type="button" className="info-panel-link" onClick={handleLogout}>{t('logout')}</button>
+            </div>
+            <div className="info-panel-row">
+              <strong>{t('location')}</strong>
               <span className="info-panel-mono">
                 {coords ? `${coords.lat.toFixed(3)}, ${coords.lng.toFixed(3)}` :
-                  geoError ? 'GPS hiba' : '—'}
+                  geoError ? t('gps_error') : '—'}
               </span>
             </div>
             <div className="info-panel-row">
-              <strong>Aktivitás</strong>
+              <strong>{t('activity')}</strong>
               <span>
                 {stats.loading ? '…' : `24h: ${stats.last24h} · 7d: ${stats.last7d} · ∞: ${stats.all}`}
               </span>
             </div>
             <div className="info-panel-row">
-              <strong>Cellák</strong>
+              <strong>{t('cells')}</strong>
               <span>
                 {moodGrid.loading ? '…' : `${moodGrid.cells.length} (${moodGrid.totalPoints} pt)`}
                 {moodGrid.warning && <span className="info-warn"> {moodGrid.warning}</span>}
@@ -282,16 +299,16 @@ export default function App() {
             <form onSubmit={handleCitySearch} className="info-search">
               <input
                 type="text"
-                placeholder="Város keresése…"
+                placeholder={t('search_placeholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <button type="submit" disabled={searchLoading}>
-                {searchLoading ? '…' : 'Ugrás'}
+                {searchLoading ? '…' : t('search_go')}
               </button>
             </form>
             {searchError && <div className="info-warn">{searchError}</div>}
-            <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>Bezárás</button>
+            <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>{t('close')}</button>
           </div>
         )}
       </main>
@@ -302,6 +319,7 @@ export default function App() {
           {EMOTIONS.map((e) => {
             const disabled = !canVote || !coords || !userId;
             const Icon = e.Icon;
+            const label = t(`emotion_${e.id}`);
             return (
               <button
                 key={e.id}
@@ -310,10 +328,10 @@ export default function App() {
                 onClick={() => handleVote(e.id)}
                 disabled={disabled}
                 style={{ '--chip-color': e.color }}
-                aria-label={e.name}
+                aria-label={label}
               >
                 <span className="emotion-chip-icon"><Icon width={22} height={22} /></span>
-                <span className="emotion-chip-label">{e.name}</span>
+                <span className="emotion-chip-label">{label}</span>
               </button>
             );
           })}

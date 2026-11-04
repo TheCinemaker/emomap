@@ -240,6 +240,22 @@ button { font-family: inherit; }
 }
 .info-panel-close:hover { border-color: var(--border-strong); color: var(--fg); }
 
+.info-lang-row { justify-content: flex-start; gap: 6px; }
+
+.info-lang-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg-muted);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.info-lang-btn:hover { border-color: var(--border-strong); color: var(--fg); }
+.info-lang-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 /* ── BOTTOM: vote prompt + emotion grid ── */
 .app-bottom {
   flex: 0 0 auto;
@@ -662,6 +678,8 @@ button { font-family: inherit; }
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
   backdrop-filter: blur(14px);
 }
+
+.auth-lang-row { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; }
 
 .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
 .auth-logo { font-size: 28px; }

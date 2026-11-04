@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { supabase } from './supabaseClient';
 
 const MAX_FETCH_LIMIT = 20000;
+const MIN_CELL_SIZE_FOR_PRIVACY = 3; // k-anonymity: never show a cell fewer people contributed to
 
 const EMOTION_RGB = {
   happy:     [52, 199, 89],
@@ -110,7 +111,7 @@ export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
 
         const result = [];
         for (const [key, cell] of grid.entries()) {
-          if (cell.count === 0) continue;
+          if (cell.count < MIN_CELL_SIZE_FOR_PRIVACY) continue;
           const lat = cell.latSum / cell.count;
           const lng = cell.lngSum / cell.count;
           const total = cell.count;
