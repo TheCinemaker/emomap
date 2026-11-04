@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { LANGUAGES } from '../i18n';
+import { IconUser } from './Icons';
 
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
 
@@ -77,7 +78,7 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
           {profile?.avatar_url ? (
             <img src={profile.avatar_url} alt="" className="profile-avatar-img" />
           ) : (
-            <span className="profile-avatar-fallback" aria-hidden>🙂</span>
+            <IconUser className="profile-avatar-fallback" width={40} height={40} aria-hidden />
           )}
           <span className="profile-avatar-edit">{uploading ? '…' : '✎'}</span>
           <input type="file" accept="image/*" onChange={handleAvatarChange} disabled={uploading} />

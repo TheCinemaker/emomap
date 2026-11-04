@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useFriends } from '../useFriends';
 import { EMOTIONS } from '../emotions';
+import { IconUser } from './Icons';
 
 const EMOTION_COLOR_BY_ID = EMOTIONS.reduce((acc, e) => ({ ...acc, [e.id]: e.color }), {});
 
@@ -84,7 +85,7 @@ export default function Friends({ userId, t, onClose, onOpenChat }) {
             {results.map((p) => (
               <div key={p.id} className="friends-row">
                 <div className="friends-row-avatar" style={{ backgroundImage: p.avatar_url ? `url(${p.avatar_url})` : undefined }}>
-                  {!p.avatar_url && '🙂'}
+                  {!p.avatar_url && <IconUser width={18} height={18} />}
                 </div>
                 <span className="friends-row-name">{p.username}</span>
                 <button type="button" className="friends-btn primary" disabled={sendingId === p.id} onClick={() => handleSend(p.id)}>
@@ -124,7 +125,7 @@ export default function Friends({ userId, t, onClose, onOpenChat }) {
             return (
               <div key={f.friendshipId} className="friends-row">
                 <div className="friends-row-avatar" style={{ backgroundImage: f.profile?.avatar_url ? `url(${f.profile.avatar_url})` : undefined }}>
-                  {!f.profile?.avatar_url && '🙂'}
+                  {!f.profile?.avatar_url && <IconUser width={18} height={18} />}
                 </div>
                 <div className="friends-row-info">
                   <span className="friends-row-name">{f.profile?.username || '—'}</span>

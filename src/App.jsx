@@ -20,6 +20,7 @@ import ReelsViewer from './components/ReelsViewer';
 import ShareCard from './components/ShareCard';
 import Profile from './components/Profile';
 import Friends from './components/Friends';
+import { IconPin } from './components/Icons';
 import Chat from './components/Chat';
 import { useUnreadMessageCount } from './useChat';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
@@ -413,7 +414,8 @@ export default function App() {
               onClick={() => { setShowInfo(false); setShowVenueClaim(true); }}
               disabled={!coords}
             >
-              📍 {t('venue_claim_open')}
+              <IconPin width={14} height={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />
+              {t('venue_claim_open')}
             </button>
             <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>{t('close')}</button>
           </div>

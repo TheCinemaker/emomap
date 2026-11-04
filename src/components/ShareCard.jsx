@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { EMOTIONS } from '../emotions';
+import { USER_PATH_D } from './Icons';
 
 const CARD_W = 1080;
 const CARD_H = 1920;
@@ -76,11 +77,16 @@ async function drawAvatar(ctx, avatarUrl, dominantColor) {
   ctx.restore();
 
   if (!drew) {
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `${Math.round(AVATAR_R * 1.1)}px sans-serif`;
-    ctx.fillText('🙂', AVATAR_CX, AVATAR_CY + AVATAR_R * 0.05);
-    ctx.textBaseline = 'alphabetic';
+    // Same user-silhouette glyph as the rest of the app's avatar fallbacks
+    // (Profile/Friends), drawn as a vector path rather than an emoji glyph.
+    ctx.save();
+    ctx.translate(AVATAR_CX, AVATAR_CY);
+    const scale = (AVATAR_R * 1.5) / 24;
+    ctx.scale(scale, scale);
+    ctx.translate(-12, -12);
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fill(new Path2D(USER_PATH_D));
+    ctx.restore();
   }
 
   ctx.beginPath();

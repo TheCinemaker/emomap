@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { PIN_PATH_D } from './components/Icons';
 
 // Individual per-vote pulse flashes only render at this zoom or closer —
 // see the PULSES effect below for why.
@@ -389,7 +390,7 @@ export function MapView({
       const el = document.createElement('div');
       el.className = 'venue-pin';
       el.title = venue.name;
-      el.textContent = '📍';
+      el.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="${PIN_PATH_D}"/></svg>`;
       markers.set(venue.id, new maplibregl.Marker({ element: el })
         .setLngLat([venue.lng, venue.lat]).addTo(map));
     });
