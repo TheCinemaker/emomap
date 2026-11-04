@@ -1,5 +1,5 @@
 // src/MapView.jsx
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PIN_PATH_D } from './components/Icons';
@@ -101,6 +101,10 @@ export function MapView({
   const activePulseMarkers = useRef([]);
   const renderedPulseIds   = useRef(new Set());
 
+  // Tracks the map's actual pitch (not just what the button last set) so the
+  // 3D toggle stays in sync if the user tilts manually via drag-rotate too.
+  const [pitch, setPitch] = useState(0);
+
   // ── Init map ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return;
@@ -117,12 +121,21 @@ export function MapView({
       style: 'https://tiles.openfreemap.org/styles/liberty',
       center: [19, 47],
       zoom: 4,
+      pitch: 0,
+      maxPitch: 60,
       attributionControl: false
     });
 
     map.dragPan.enable();
     map.scrollZoom.enable();
     map.touchZoomRotate.enable();
+    // "liberty" already ships a real fill-extrusion building-3d layer
+    // (verified in its style JSON: source-layer "building", heights from
+    // render_height/render_min_height) — it just needs pitch > 0 to be
+    // visible at all. Explicit, not relying on MapLibre's defaults, since
+    // the whole point is this has to actually work.
+    map.dragRotate.enable();
+    map.touchPitch.enable();
 
     const emitBounds = () => {
       const b = map.getBounds();
@@ -133,6 +146,7 @@ export function MapView({
     map.on('moveend', emitBounds);
     map.on('load',    emitBounds);
     map.on('zoomend', emitBounds);
+    map.on('pitch', () => setPitch(map.getPitch()));
     mapRef.current = map;
 
     return () => { map.remove(); mapRef.current = null; };
@@ -408,11 +422,33 @@ export function MapView({
     mapRef.current.flyTo({ center: [coords.lng, coords.lat], zoom: 12, speed: 1.2 });
   }
 
+  const is3D = pitch > 5;
+  function handleToggle3D() {
+    const map = mapRef.current;
+    if (!map) return;
+    if (is3D) {
+      map.easeTo({ pitch: 0, bearing: 0, duration: 500 });
+    } else {
+      // Buildings only render from zoom 14 — hop in a bit if we're zoomed
+      // out further, or tilting just shows flat ground with nothing to see.
+      const target = { pitch: 55, duration: 500 };
+      if (map.getZoom() < 15) target.zoom = 16;
+      map.easeTo(target);
+    }
+  }
+
   return (
     <div className="map-container" ref={mapContainerRef} style={{ width: '100%', height: '100%' }}>
       <div className="map-zoom-controls">
         <button onClick={() => mapRef.current?.zoomIn()}>+</button>
         <button onClick={() => mapRef.current?.zoomOut()}>−</button>
+        <button
+          className={`map-3d-btn${is3D ? ' is-active' : ''}`}
+          onClick={handleToggle3D}
+          title="3D"
+        >
+          3D
+        </button>
       </div>
       <button
         className={`back-to-me-btn${!coords ? ' is-disabled' : ''}`}

@@ -1372,6 +1372,9 @@ button { font-family: inherit; }
   backdrop-filter: blur(8px);
 }
 
+.map-3d-btn { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+.map-3d-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 .back-to-me-btn {
   position: absolute;
   bottom: 12px;
