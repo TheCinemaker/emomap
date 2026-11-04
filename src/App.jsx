@@ -10,6 +10,7 @@ import { useGeolocation } from './useGeolocation';
 import { useMoodGrid } from './useMoodGrid';
 import { useDebounce } from './useDebounce';
 import { useLang, LANGUAGES } from './i18n';
+import { useEmotionalMirror } from './useEmotionalMirror';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
@@ -34,6 +35,8 @@ function jitterCoords(lat, lng) {
   return { lat: lat + dLat, lng: lng + dLng };
 }
 
+const EMOTION_COLOR_BY_ID = EMOTIONS.reduce((acc, e) => ({ ...acc, [e.id]: e.color }), {});
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState(null);
@@ -51,6 +54,7 @@ export default function App() {
   const [showInfo, setShowInfo] = useState(false);
 
   const { lang, setLang, t } = useLang();
+  const { mirror, trigger: triggerMirror } = useEmotionalMirror();
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [lastVoteLocation, setLastVoteLocation] = useState(null);
@@ -171,12 +175,14 @@ export default function App() {
       if (error) {
         console.error('Supabase insert error:', error);
         setLastVoteAt(null);
+      } else {
+        triggerMirror(coords, emotionId);
       }
     } catch (err) {
       console.error('Unexpected insert error:', err);
       setLastVoteAt(null);
     }
-  }, [canVote, coords, userId]);
+  }, [canVote, coords, userId, triggerMirror]);
 
   const handleCitySearch = useCallback(async (e) => {
     e.preventDefault();
@@ -309,6 +315,16 @@ export default function App() {
             </form>
             {searchError && <div className="info-warn">{searchError}</div>}
             <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>{t('close')}</button>
+          </div>
+        )}
+
+        {mirror && (
+          <div
+            className="mirror-toast"
+            style={{ '--mirror-color': EMOTION_COLOR_BY_ID[mirror.emotion] || '#fff' }}
+            role="status"
+          >
+            {t('mirror_not_alone', { percent: mirror.percent, emotion: t(`emotion_${mirror.emotion}`) })}
           </div>
         )}
       </main>

@@ -64,6 +64,8 @@ const dict = {
     reels_add_story: 'Add a story',
     reels_you: 'You',
     reels_unknown: 'Unknown',
+
+    mirror_not_alone: "You're not alone — {percent}% nearby feel {emotion} too right now",
   },
 
   hu: {
@@ -122,6 +124,8 @@ const dict = {
     reels_add_story: 'Story hozzáadása',
     reels_you: 'Te',
     reels_unknown: 'Ismeretlen',
+
+    mirror_not_alone: 'Nem vagy egyedül — a közeledben élők {percent}%-a most is {emotion}',
   },
 
   de: {
@@ -180,6 +184,8 @@ const dict = {
     reels_add_story: 'Story hinzufügen',
     reels_you: 'Du',
     reels_unknown: 'Unbekannt',
+
+    mirror_not_alone: 'Du bist nicht allein — {percent}% in deiner Nähe fühlen sich jetzt auch {emotion}',
   },
 };
 
