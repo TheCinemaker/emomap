@@ -74,6 +74,10 @@ const dict = {
     share_card_footer: '{total} votes this week · emomap.app',
     share_card_share: 'Share',
     share_card_download: 'Download',
+
+    replay_open: 'Replay',
+    replay_now: 'Now',
+    replay_hours_ago: '-{h}h',
   },
 
   hu: {
@@ -142,6 +146,10 @@ const dict = {
     share_card_footer: '{total} szavazat ezen a héten · emomap.app',
     share_card_share: 'Megosztás',
     share_card_download: 'Letöltés',
+
+    replay_open: 'Visszajátszás',
+    replay_now: 'Most',
+    replay_hours_ago: '-{h}ó',
   },
 
   de: {
@@ -210,6 +218,10 @@ const dict = {
     share_card_footer: '{total} Abstimmungen diese Woche · emomap.app',
     share_card_share: 'Teilen',
     share_card_download: 'Herunterladen',
+
+    replay_open: 'Wiedergabe',
+    replay_now: 'Jetzt',
+    replay_hours_ago: '-{h}h',
   },
 };
 

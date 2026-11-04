@@ -11,6 +11,7 @@ import { useMoodGrid } from './useMoodGrid';
 import { useDebounce } from './useDebounce';
 import { useLang, LANGUAGES } from './i18n';
 import { useEmotionalMirror } from './useEmotionalMirror';
+import { useReplay, REPLAY_HOURS } from './useReplay';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
@@ -57,6 +58,10 @@ export default function App() {
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
+  const { hourlyGrids, loading: replayLoading, load: loadReplay, reset: resetReplay } = useReplay();
+  const [showReplay, setShowReplay] = useState(false);
+  const [replayHour, setReplayHour] = useState(REPLAY_HOURS - 1);
+  const [replayPlaying, setReplayPlaying] = useState(true);
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
   const [lastVoteLocation, setLastVoteLocation] = useState(null);
@@ -125,6 +130,27 @@ export default function App() {
   }, [isLoading]);
 
   const moodGrid = useMoodGrid(debouncedBounds, SESSION_ID, debouncedZoom, demoData);
+
+  // Replay auto-advance: loop through the 24 pre-built hourly grids while playing
+  useEffect(() => {
+    if (!showReplay || !replayPlaying || !hourlyGrids) return;
+    const id = setInterval(() => {
+      setReplayHour((h) => (h + 1) % REPLAY_HOURS);
+    }, 700);
+    return () => clearInterval(id);
+  }, [showReplay, replayPlaying, hourlyGrids]);
+
+  const handleOpenReplay = useCallback(() => {
+    setShowReplay(true);
+    setReplayHour(REPLAY_HOURS - 1);
+    setReplayPlaying(true);
+    loadReplay(debouncedBounds, debouncedZoom);
+  }, [loadReplay, debouncedBounds, debouncedZoom]);
+
+  const handleCloseReplay = useCallback(() => {
+    setShowReplay(false);
+    resetReplay();
+  }, [resetReplay]);
 
   const handleNewBatch = useCallback((batch) => {
     setPulseBatch((prev) => [...prev, ...batch].slice(-200));
@@ -249,6 +275,16 @@ export default function App() {
           </button>
           <button
             type="button"
+            className={`app-pill-btn${showReplay ? ' is-active' : ''}`}
+            onClick={() => (showReplay ? handleCloseReplay() : handleOpenReplay())}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm.75-12.5h-1.5v5.19l4.15 2.49.75-1.27-3.4-2.04V7.5Z"/>
+            </svg>
+            <span>{t('replay_open')}</span>
+          </button>
+          <button
+            type="button"
             className="app-icon-btn"
             onClick={() => setShowInfo(s => !s)}
             aria-label={t('info')}
@@ -275,7 +311,7 @@ export default function App() {
           pulses={pulseBatch}
           personalMood={personalMood}
           personalAuraLocation={lastVoteLocation}
-          moodGridCells={moodGrid.cells}
+          moodGridCells={showReplay && hourlyGrids ? hourlyGrids[replayHour] : moodGrid.cells}
         />
 
         {showInfo && (
@@ -331,6 +367,27 @@ export default function App() {
             </form>
             {searchError && <div className="info-warn">{searchError}</div>}
             <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>{t('close')}</button>
+          </div>
+        )}
+
+        {showReplay && (
+          <div className="replay-bar" role="group" aria-label={t('replay_open')}>
+            <button type="button" className="replay-icon-btn" onClick={() => setReplayPlaying((p) => !p)}>
+              {replayPlaying ? '❙❙' : '▶'}
+            </button>
+            <input
+              type="range"
+              className="replay-slider"
+              min={0}
+              max={REPLAY_HOURS - 1}
+              value={replayHour}
+              onChange={(e) => { setReplayPlaying(false); setReplayHour(Number(e.target.value)); }}
+              disabled={!hourlyGrids}
+            />
+            <span className="replay-label">
+              {replayLoading ? '…' : (replayHour === REPLAY_HOURS - 1 ? t('replay_now') : t('replay_hours_ago', { h: REPLAY_HOURS - 1 - replayHour }))}
+            </span>
+            <button type="button" className="replay-icon-btn" onClick={handleCloseReplay}>×</button>
           </div>
         )}
 

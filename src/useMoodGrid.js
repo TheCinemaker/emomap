@@ -1,25 +1,9 @@
 // src/useMoodGrid.js
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from './supabaseClient';
+import { calculateCellSize, buildGridCells } from './moodGridUtils';
 
 const MAX_FETCH_LIMIT = 20000;
-const MIN_CELL_SIZE_FOR_PRIVACY = 3; // k-anonymity: never show a cell fewer people contributed to
-
-const EMOTION_RGB = {
-  happy:     [52, 199, 89],
-  bored:     [142, 142, 147],
-  stressed:  [255, 59, 48],
-  tired:     [255, 204, 0],
-  motivated: [10, 132, 255],
-  love:      [255, 45, 85],
-  hype:      [191, 90, 242],
-};
-
-function calculateCellSize(zoomLevel) {
-  const baseSizeDeg = 0.01;
-  const size = baseSizeDeg * Math.pow(2, 10 - zoomLevel);
-  return Math.max(0.005, Math.min(10, size));
-}
 
 export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
   const [cells, setCells] = useState([]);
@@ -88,54 +72,7 @@ export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
 
         setTotalPoints(allData.length);
 
-        const grid = new Map();
-        for (const row of allData) {
-          const lat = typeof row.lat === 'number' ? row.lat : Number(row.lat);
-          const lng = typeof row.lng === 'number' ? row.lng : Number(row.lng);
-          if (Number.isNaN(lat) || Number.isNaN(lng)) continue;
-
-          const gx = Math.floor(lat / cellSizeDeg);
-          const gy = Math.floor(lng / cellSizeDeg);
-          const key = `${gx}_${gy}`;
-
-          let cell = grid.get(key);
-          if (!cell) {
-            cell = { latSum: 0, lngSum: 0, count: 0, emotionCounts: {} };
-            grid.set(key, cell);
-          }
-          cell.latSum += lat;
-          cell.lngSum += lng;
-          cell.count += 1;
-          cell.emotionCounts[row.emotion] = (cell.emotionCounts[row.emotion] || 0) + 1;
-        }
-
-        const result = [];
-        for (const [key, cell] of grid.entries()) {
-          if (cell.count < MIN_CELL_SIZE_FOR_PRIVACY) continue;
-          const lat = cell.latSum / cell.count;
-          const lng = cell.lngSum / cell.count;
-          const total = cell.count;
-
-          let rSum = 0, gSum = 0, bSum = 0;
-          for (const [emotion, count] of Object.entries(cell.emotionCounts)) {
-            const rgb = EMOTION_RGB[emotion];
-            if (!rgb) continue;
-            const weight = count / total;
-            rSum += rgb[0] * weight;
-            gSum += rgb[1] * weight;
-            bSum += rgb[2] * weight;
-          }
-
-          result.push({
-            lat,
-            lng,
-            color: `rgb(${Math.round(rSum)}, ${Math.round(gSum)}, ${Math.round(bSum)})`,
-            total,
-            intensity: Math.min(1, total / 20),
-            size: cellSizeDeg,
-            key
-          });
-        }
+        const result = buildGridCells(allData, cellSizeDeg);
 
         if (!cancelled) {
           setCells(result);
