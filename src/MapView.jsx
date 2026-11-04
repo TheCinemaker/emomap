@@ -82,6 +82,7 @@ export function MapView({
   personalMood,
   personalAuraLocation,
   moodGridCells,
+  venues,
   onZoomChange
 }) {
   const mapContainerRef    = useRef(null);
@@ -89,6 +90,7 @@ export function MapView({
   const userMarkerRef      = useRef(null);
   const personalAuraRef    = useRef(null);
   const moodGridMarkersRef = useRef(new Map());
+  const venueMarkersRef    = useRef(new Map());
 
   // live pulse entries for zoom-resize: [{ marker, lat, el }]
   const activePulseMarkers = useRef([]);
@@ -339,6 +341,37 @@ export function MapView({
 
   useEffect(() => {
     const markers = moodGridMarkersRef.current;
+    return () => { markers.forEach(m => m.remove()); markers.clear(); };
+  }, []);
+
+  // ── Venues (free-claim pins; a boosted layer comes later) ─────────────────
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const markers = venueMarkersRef.current;
+    const visibleIds = new Set();
+
+    venues?.forEach((venue) => {
+      visibleIds.add(venue.id);
+      if (markers.has(venue.id)) {
+        markers.get(venue.id).setLngLat([venue.lng, venue.lat]);
+        return;
+      }
+      const el = document.createElement('div');
+      el.className = 'venue-pin';
+      el.title = venue.name;
+      el.textContent = '📍';
+      markers.set(venue.id, new maplibregl.Marker({ element: el })
+        .setLngLat([venue.lng, venue.lat]).addTo(map));
+    });
+
+    markers.forEach((m, id) => {
+      if (!visibleIds.has(id)) { m.remove(); markers.delete(id); }
+    });
+  }, [venues]);
+
+  useEffect(() => {
+    const markers = venueMarkersRef.current;
     return () => { markers.forEach(m => m.remove()); markers.clear(); };
   }, []);
 

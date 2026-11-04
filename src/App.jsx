@@ -12,6 +12,8 @@ import { useDebounce } from './useDebounce';
 import { useLang, LANGUAGES } from './i18n';
 import { useEmotionalMirror } from './useEmotionalMirror';
 import { useReplay, REPLAY_HOURS } from './useReplay';
+import { useVenues } from './useVenues';
+import VenueClaim from './components/VenueClaim';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
@@ -55,6 +57,7 @@ export default function App() {
   const [searchError, setSearchError] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
+  const [showVenueClaim, setShowVenueClaim] = useState(false);
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
@@ -130,6 +133,7 @@ export default function App() {
   }, [isLoading]);
 
   const moodGrid = useMoodGrid(debouncedBounds, SESSION_ID, debouncedZoom, demoData);
+  const { venues, refresh: refreshVenues } = useVenues(debouncedBounds);
 
   // Replay auto-advance: loop through the 24 pre-built hourly grids while playing
   useEffect(() => {
@@ -312,6 +316,7 @@ export default function App() {
           personalMood={personalMood}
           personalAuraLocation={lastVoteLocation}
           moodGridCells={showReplay && hourlyGrids ? hourlyGrids[replayHour] : moodGrid.cells}
+          venues={venues}
         />
 
         {showInfo && (
@@ -366,8 +371,27 @@ export default function App() {
               </button>
             </form>
             {searchError && <div className="info-warn">{searchError}</div>}
+
+            <button
+              type="button"
+              className="info-panel-close"
+              onClick={() => { setShowInfo(false); setShowVenueClaim(true); }}
+              disabled={!coords}
+            >
+              📍 {t('venue_claim_open')}
+            </button>
             <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>{t('close')}</button>
           </div>
+        )}
+
+        {showVenueClaim && (
+          <VenueClaim
+            coords={coords}
+            userId={userId}
+            t={t}
+            onClose={() => setShowVenueClaim(false)}
+            onClaimed={refreshVenues}
+          />
         )}
 
         {showReplay && (

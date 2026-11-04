@@ -78,6 +78,13 @@ const dict = {
     replay_open: 'Replay',
     replay_now: 'Now',
     replay_hours_ago: '-{h}h',
+
+    venue_claim_open: 'Claim this spot',
+    venue_claim_title: 'Put your venue on the map',
+    venue_claim_hint: "This claims your current location as a venue — free. You'll be able to boost its visibility later.",
+    venue_claim_name_placeholder: 'Venue name',
+    venue_claim_submit: 'Claim',
+    venue_claim_error: 'Could not claim this venue.',
   },
 
   hu: {
@@ -150,6 +157,13 @@ const dict = {
     replay_open: 'Visszajátszás',
     replay_now: 'Most',
     replay_hours_ago: '-{h}ó',
+
+    venue_claim_open: 'Hely regisztrálása',
+    venue_claim_title: 'Tedd fel a helyedet a térképre',
+    venue_claim_hint: 'Ez ingyen felveszi a jelenlegi pozíciódat helyszínként. Később fizetve ki is emelheted.',
+    venue_claim_name_placeholder: 'Helyszín neve',
+    venue_claim_submit: 'Regisztrálás',
+    venue_claim_error: 'Nem sikerült felvenni ezt a helyszínt.',
   },
 
   de: {
@@ -222,6 +236,13 @@ const dict = {
     replay_open: 'Wiedergabe',
     replay_now: 'Jetzt',
     replay_hours_ago: '-{h}h',
+
+    venue_claim_open: 'Standort registrieren',
+    venue_claim_title: 'Setze deinen Ort auf die Karte',
+    venue_claim_hint: 'Das registriert deinen aktuellen Standort kostenlos als Venue. Später kannst du die Sichtbarkeit boosten.',
+    venue_claim_name_placeholder: 'Name des Ortes',
+    venue_claim_submit: 'Registrieren',
+    venue_claim_error: 'Dieser Ort konnte nicht registriert werden.',
   },
 };
 

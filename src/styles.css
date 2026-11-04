@@ -399,6 +399,74 @@ button { font-family: inherit; }
 }
 .share-card-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 
+/* ── Venue claim modal ── */
+.venue-claim-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.venue-claim-panel {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.venue-claim-title { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: var(--fg); }
+.venue-claim-hint { margin: 0 0 16px; font-size: 13px; color: var(--fg-muted); line-height: 1.4; }
+
+.venue-claim-form { display: flex; flex-direction: column; gap: 12px; }
+.venue-claim-form input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+.venue-claim-form input:focus { border-color: var(--accent); }
+
+.venue-claim-error { color: var(--danger); font-size: 12px; }
+
+.venue-claim-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.venue-claim-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.venue-claim-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.venue-claim-btn:disabled { opacity: 0.5; cursor: default; }
+
+.venue-pin {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-elev-strong);
+  border: 2px solid var(--accent-2);
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+
 /* ── BOTTOM: vote prompt + emotion grid ── */
 .app-bottom {
   flex: 0 0 auto;
