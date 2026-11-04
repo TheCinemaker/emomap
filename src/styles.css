@@ -92,6 +92,7 @@ button { font-family: inherit; }
 }
 
 .app-icon-btn {
+  position: relative;
   display: grid;
   place-items: center;
   width: 36px;
@@ -103,6 +104,22 @@ button { font-family: inherit; }
   font-size: 16px;
   cursor: pointer;
   flex: 0 0 auto;
+}
+
+.app-icon-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
 }
 .app-icon-btn:active { transform: scale(0.96); }
 .app-icon-btn.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -359,6 +376,12 @@ button { font-family: inherit; }
   align-items: center;
   justify-content: center;
   padding: 20px;
+  /* The 9:16 card + action buttons can be taller than a real phone's
+     viewport (especially with browser chrome eating vertical space) — this
+     used to leave the close button, floated above the panel, pushed off
+     screen with no way to scroll back to it. Allow scrolling as a fallback
+     even after moving the button on-panel below. */
+  overflow-y: auto;
 }
 
 .share-card-panel {
@@ -372,15 +395,26 @@ button { font-family: inherit; }
 }
 
 .share-card-close {
+  /* Was floated at top:-40px, OUTSIDE the panel — on a short viewport
+     (real phone chrome included) that pushed it above the visible area
+     with no way to scroll back up to it, so the card couldn't be closed.
+     Now it sits inside the panel's own bounds, same pattern as every
+     other modal's close button (Profile/Friends/VenueClaim). */
   position: absolute;
-  top: -40px;
-  right: 0;
-  background: transparent;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
   border: none;
+  border-radius: 50%;
   color: #fff;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1;
   cursor: pointer;
+  z-index: 1;
 }
 
 .share-card-status {
@@ -427,6 +461,7 @@ button { font-family: inherit; }
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
 }
 
 .venue-claim-panel {
@@ -482,6 +517,7 @@ button { font-family: inherit; }
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
 }
 
 .profile-panel {
@@ -612,7 +648,20 @@ button { font-family: inherit; }
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
-.friends-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.friends-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -20px -20px 14px;
+  padding: 20px 20px 14px;
+  /* Pinned to the top of .friends-panel's own scroll area — otherwise a
+     long friends list scrolls the close button out of view with it
+     (the same bug just fixed on the Share Card's close button). */
+  position: sticky;
+  top: 0;
+  background: var(--bg-elev);
+  z-index: 1;
+}
 .friends-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--fg); }
 .friends-close { background: transparent; border: none; color: var(--fg-muted); font-size: 24px; line-height: 1; cursor: pointer; }
 
@@ -690,6 +739,21 @@ button { font-family: inherit; }
 .friends-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .friends-btn:disabled { opacity: 0.5; cursor: default; }
 
+.friends-row-chat {
+  margin-left: auto;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent);
+  cursor: pointer;
+}
+.friends-row-chat:hover { background: rgba(255, 255, 255, 0.1); }
+
 .friends-row-remove {
   background: transparent;
   border: none;
@@ -701,6 +765,104 @@ button { font-family: inherit; }
   flex: 0 0 auto;
 }
 .friends-row-remove:hover { color: var(--danger); }
+
+/* ── Chat modal ── */
+.chat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.chat-panel {
+  width: 100%;
+  max-width: 380px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.chat-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.chat-header-name { font-size: 15px; font-weight: 700; color: var(--fg); }
+.chat-close { background: transparent; border: none; color: var(--fg-muted); font-size: 24px; line-height: 1; cursor: pointer; }
+
+.chat-messages {
+  flex: 1 1 auto;
+  min-height: 200px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-empty { font-size: 13px; color: var(--fg-muted); text-align: center; margin: auto; }
+
+.chat-bubble {
+  align-self: flex-start;
+  max-width: 78%;
+  padding: 9px 13px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg);
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.chat-bubble.mine {
+  align-self: flex-end;
+  background: var(--accent);
+  color: #fff;
+}
+
+.chat-input-row {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+.chat-input-row input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+.chat-input-row input:focus { border-color: var(--accent); }
+.chat-input-row button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chat-input-row button:disabled { opacity: 0.5; cursor: default; }
 
 .venue-pin {
   display: grid;

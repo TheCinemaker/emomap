@@ -13,7 +13,7 @@ function minutesAgo(iso) {
   return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 }
 
-export default function Friends({ userId, t, onClose }) {
+export default function Friends({ userId, t, onClose, onOpenChat }) {
   const { friends, incoming, outgoing, loading, searchUsers, sendRequestTo, respond, removeFriend, cancelRequest } = useFriends(userId);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
@@ -137,6 +137,16 @@ export default function Friends({ userId, t, onClose }) {
                     ) : t('friends_mood_none')}
                   </span>
                 </div>
+                <button
+                  type="button"
+                  className="friends-row-chat"
+                  onClick={() => onOpenChat?.(f.otherId, f.profile?.username)}
+                  title={t('chat_open')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M4 4h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H8l-4.4 3.3A.5.5 0 0 1 3 21V5a1 1 0 0 1 1-1Z"/>
+                  </svg>
+                </button>
                 <button type="button" className="friends-row-remove" onClick={() => removeFriend(f.friendshipId)} title={t('friends_remove')}>×</button>
               </div>
             );

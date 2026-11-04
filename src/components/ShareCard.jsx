@@ -10,6 +10,9 @@ import { EMOTIONS } from '../emotions';
 const CARD_W = 1080;
 const CARD_H = 1920;
 const WINDOW_DAYS = 7;
+const AVATAR_CX = CARD_W / 2;
+const AVATAR_CY = 470;
+const AVATAR_R = 150;
 
 const EMOTION_COLOR = EMOTIONS.reduce((acc, e) => ({ ...acc, [e.id]: e.color }), {});
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
@@ -29,24 +32,83 @@ function roundRect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function drawCard(canvas, stats, lang, t) {
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+async function drawAvatar(ctx, avatarUrl, dominantColor) {
+  // Soft ring glow behind the avatar, tighter than the page-wide one — this
+  // is the card's centerpiece, it should read as one first.
+  const ringGlow = ctx.createRadialGradient(AVATAR_CX, AVATAR_CY, AVATAR_R * 0.6, AVATAR_CX, AVATAR_CY, AVATAR_R * 1.8);
+  ringGlow.addColorStop(0, hexToColorAlpha(dominantColor, 0.55));
+  ringGlow.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = ringGlow;
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(AVATAR_CX, AVATAR_CY, AVATAR_R, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+
+  let drew = false;
+  if (avatarUrl) {
+    try {
+      const img = await loadImage(avatarUrl);
+      const scale = Math.max((AVATAR_R * 2) / img.width, (AVATAR_R * 2) / img.height);
+      const dw = img.width * scale, dh = img.height * scale;
+      ctx.drawImage(img, AVATAR_CX - dw / 2, AVATAR_CY - dh / 2, dw, dh);
+      drew = true;
+    } catch (err) {
+      console.warn('[ShareCard] avatar image failed to load, using fallback:', err);
+    }
+  }
+  if (!drew) {
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(AVATAR_CX - AVATAR_R, AVATAR_CY - AVATAR_R, AVATAR_R * 2, AVATAR_R * 2);
+  }
+  ctx.restore();
+
+  if (!drew) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(AVATAR_R * 1.1)}px sans-serif`;
+    ctx.fillText('🙂', AVATAR_CX, AVATAR_CY + AVATAR_R * 0.05);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  ctx.beginPath();
+  ctx.arc(AVATAR_CX, AVATAR_CY, AVATAR_R + 5, 0, Math.PI * 2);
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = dominantColor;
+  ctx.stroke();
+}
+
+function hexToColorAlpha(hex, alpha) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+async function drawCard(canvas, stats, lang, t, avatarUrl) {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
 
   const dominantColor = EMOTION_COLOR[stats.dominant] || '#6366f1';
   const { r, g, b } = hexToRgb(dominantColor);
 
+  // Background and overall tone always derive from the dominant mood —
+  // this card is meant to look different every week, not be a fixed template.
   const bg = ctx.createLinearGradient(0, 0, 0, H);
   bg.addColorStop(0, `rgba(${r},${g},${b},0.55)`);
   bg.addColorStop(0.45, 'rgba(10,12,16,1)');
   bg.addColorStop(1, '#05060a');
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
-
-  const glow = ctx.createRadialGradient(W / 2, 520, 40, W / 2, 520, 520);
-  glow.addColorStop(0, `rgba(${r},${g},${b},0.45)`);
-  glow.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = glow;
   ctx.fillRect(0, 0, W, H);
 
   const sys = '-apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
@@ -64,22 +126,26 @@ function drawCard(canvas, stats, lang, t) {
   ctx.font = `500 30px ${sys}`;
   ctx.fillText(`${fmt(weekAgo)} – ${fmt(now)}`, W / 2, 190);
 
+  // Centerpiece: the user's own photo, ringed in their dominant mood's color.
+  await drawAvatar(ctx, avatarUrl, dominantColor);
+
   const dominantPercent = Math.round((stats.counts[stats.dominant] / stats.total) * 100);
+  ctx.textAlign = 'center';
   ctx.fillStyle = dominantColor;
-  ctx.font = `800 160px ${sys}`;
-  ctx.fillText(`${dominantPercent}%`, W / 2, 580);
+  ctx.font = `800 130px ${sys}`;
+  ctx.fillText(`${dominantPercent}%`, W / 2, 740);
 
   ctx.fillStyle = '#ffffff';
-  ctx.font = `700 56px ${sys}`;
-  ctx.fillText(t(`emotion_${stats.dominant}`).toUpperCase(), W / 2, 660);
+  ctx.font = `700 50px ${sys}`;
+  ctx.fillText(t(`emotion_${stats.dominant}`).toUpperCase(), W / 2, 810);
 
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.font = `500 32px ${sys}`;
-  ctx.fillText(t('share_card_headline'), W / 2, 720);
+  ctx.font = `500 30px ${sys}`;
+  ctx.fillText(t('share_card_headline'), W / 2, 860);
 
   const rows = Object.entries(stats.counts).sort((x, y) => y[1] - x[1]);
-  const barStartY = 860;
-  const barGap = 110;
+  const barStartY = 950;
+  const barGap = 105;
   const barMaxW = W - 200;
 
   rows.forEach(([emotionId, count], i) => {
@@ -89,15 +155,15 @@ function drawCard(canvas, stats, lang, t) {
 
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.font = `600 34px ${sys}`;
+    ctx.font = `600 32px ${sys}`;
     ctx.fillText(t(`emotion_${emotionId}`), 100, y);
 
     ctx.textAlign = 'right';
     ctx.fillStyle = color;
-    ctx.font = `700 34px ${sys}`;
+    ctx.font = `700 32px ${sys}`;
     ctx.fillText(`${Math.round(pct * 100)}%`, W - 100, y);
 
-    const trackY = y + 18;
+    const trackY = y + 16;
     ctx.fillStyle = 'rgba(255,255,255,0.08)';
     roundRect(ctx, 100, trackY, barMaxW, 14, 7);
     ctx.fill();
@@ -116,6 +182,7 @@ function drawCard(canvas, stats, lang, t) {
 export default function ShareCard({ userId, lang, t, onClose }) {
   const canvasRef = useRef(null);
   const [stats, setStats] = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloadUrl, setDownloadUrl] = useState(null);
 
@@ -124,14 +191,14 @@ export default function ShareCard({ userId, lang, t, onClose }) {
     async function load() {
       setLoading(true);
       const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from('emotions')
-        .select('emotion')
-        .eq('user_id', userId)
-        .gte('inserted_at', since)
-        .limit(2000);
+      const [{ data, error }, { data: profile }] = await Promise.all([
+        supabase.from('emotions').select('emotion').eq('user_id', userId).gte('inserted_at', since).limit(2000),
+        supabase.from('profiles').select('avatar_url').eq('id', userId).single(),
+      ]);
 
       if (cancelled) return;
+      setAvatarUrl(profile?.avatar_url || null);
+
       if (error || !data || data.length === 0) {
         setStats(null);
         setLoading(false);
@@ -151,11 +218,22 @@ export default function ShareCard({ userId, lang, t, onClose }) {
 
   useEffect(() => {
     if (!stats || !canvasRef.current) return;
-    drawCard(canvasRef.current, stats, lang, t);
-    canvasRef.current.toBlob((blob) => {
-      if (blob) setDownloadUrl(URL.createObjectURL(blob));
-    }, 'image/png');
-  }, [stats, lang, t]);
+    let cancelled = false;
+    drawCard(canvasRef.current, stats, lang, t, avatarUrl).then(() => {
+      if (cancelled || !canvasRef.current) return;
+      try {
+        canvasRef.current.toBlob((blob) => {
+          if (blob) setDownloadUrl(URL.createObjectURL(blob));
+        }, 'image/png');
+      } catch (err) {
+        // A cross-origin avatar without CORS headers would "taint" the
+        // canvas — the card still renders fine on screen, it just can't be
+        // exported. Don't crash the whole card over that.
+        console.warn('[ShareCard] could not export canvas (tainted?):', err);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [stats, lang, t, avatarUrl]);
 
   const handleDownload = () => {
     if (!downloadUrl) return;
@@ -167,15 +245,19 @@ export default function ShareCard({ userId, lang, t, onClose }) {
 
   const handleShare = () => {
     if (!canvasRef.current) return;
-    canvasRef.current.toBlob(async (blob) => {
-      if (!blob) return;
-      const file = new File([blob], 'emomap-weekly.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'EmoMap' }); } catch { /* cancelled */ }
-      } else {
-        handleDownload();
-      }
-    }, 'image/png');
+    try {
+      canvasRef.current.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], 'emomap-weekly.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file], title: 'EmoMap' }); } catch { /* cancelled */ }
+        } else {
+          handleDownload();
+        }
+      }, 'image/png');
+    } catch {
+      handleDownload();
+    }
   };
 
   return (

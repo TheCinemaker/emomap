@@ -112,6 +112,11 @@ const dict = {
     friends_mood_ago: '{m}m ago',
     friends_mood_none: 'No recent mood',
     friends_remove: 'Remove friend',
+
+    chat_open: 'Chat',
+    chat_empty: 'No messages yet — say hi!',
+    chat_placeholder: 'Message…',
+    chat_send: 'Send',
   },
 
   hu: {
@@ -218,6 +223,11 @@ const dict = {
     friends_mood_ago: '{m} perce',
     friends_mood_none: 'Nincs friss hangulat',
     friends_remove: 'Barát eltávolítása',
+
+    chat_open: 'Chat',
+    chat_empty: 'Még nincs üzenet — köszönj rá!',
+    chat_placeholder: 'Üzenet…',
+    chat_send: 'Küldés',
   },
 
   de: {
@@ -324,6 +334,11 @@ const dict = {
     friends_mood_ago: 'vor {m}m',
     friends_mood_none: 'Keine aktuelle Stimmung',
     friends_remove: 'Freund entfernen',
+
+    chat_open: 'Chat',
+    chat_empty: 'Noch keine Nachrichten — sag Hallo!',
+    chat_placeholder: 'Nachricht…',
+    chat_send: 'Senden',
   },
 };
 

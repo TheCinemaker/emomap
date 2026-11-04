@@ -57,7 +57,7 @@ After pushing `main`:
 
 ## 3. Live Supabase Project Migrations (`sfbuabdzkpzwpffuuwva`) — ✅ ALL EXECUTED & VERIFIED
 
-All 5 SQL migrations have been executed in the live Supabase SQL Editor and verified:
+All 6 SQL migrations have been executed in the live Supabase SQL Editor and verified:
 
 | Check | Status |
 |---|---|
@@ -65,7 +65,8 @@ All 5 SQL migrations have been executed in the live Supabase SQL Editor and veri
 | `public.venue_boosts` (`supabase_venue_boosts_schema.sql` — table + RLS + indexes + grants; note: `venue_boosts_active_idx` created on `(ends_at)` without `where ends_at > now()` since `now()` is `STABLE`, not `IMMUTABLE` in Postgres index predicates) | ✅ `true` |
 | `storage.buckets` `'avatars'` (`supabase_avatars_schema.sql` — public bucket + `avatars_select`/`insert`/`update`/`delete` policies) | ✅ `true` |
 | `public.get_mood_grid` (`supabase_mood_grid_rpc.sql` — RPC function + `anon`/`authenticated` grants + `emotions_lat_lng_inserted_idx`) | ✅ `true` |
-| `supabase_realtime` publication (`supabase_realtime_fix.sql` — live updates enabled on `reels` and `venues`) | ✅ `{reels,venues}` |
+| `public.friendships` (`supabase_friends_schema.sql` — table + RLS + 4 policies + 2 indexes + `authenticated`/`service_role` grants) | ✅ `true` |
+| `supabase_realtime` publication (`supabase_realtime_fix.sql` + `friendships` — live updates enabled on `friendships`, `reels`, and `venues`) | ✅ `{friendships,reels,venues}` |
 
 
 

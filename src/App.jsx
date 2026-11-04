@@ -20,6 +20,8 @@ import ReelsViewer from './components/ReelsViewer';
 import ShareCard from './components/ShareCard';
 import Profile from './components/Profile';
 import Friends from './components/Friends';
+import Chat from './components/Chat';
+import { useUnreadMessageCount } from './useChat';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -62,9 +64,11 @@ export default function App() {
   const [showVenueClaim, setShowVenueClaim] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [chatWith, setChatWith] = useState(null); // { friendId, friendName } | null
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
+  const unreadCount = useUnreadMessageCount(userId);
   const { hourlyGrids, loading: replayLoading, load: loadReplay, reset: resetReplay } = useReplay();
   const [showReplay, setShowReplay] = useState(false);
   const [replayHour, setReplayHour] = useState(REPLAY_HOURS - 1);
@@ -313,6 +317,7 @@ export default function App() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2c0-2.76-3.58-5-8-5Z"/>
             </svg>
+            {unreadCount > 0 && <span className="app-icon-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
         </div>
         <ReelsViewer session={session} t={t} />
@@ -335,7 +340,22 @@ export default function App() {
       )}
 
       {showFriends && (
-        <Friends userId={userId} t={t} onClose={() => setShowFriends(false)} />
+        <Friends
+          userId={userId}
+          t={t}
+          onClose={() => setShowFriends(false)}
+          onOpenChat={(friendId, friendName) => setChatWith({ friendId, friendName })}
+        />
+      )}
+
+      {chatWith && (
+        <Chat
+          userId={userId}
+          friendId={chatWith.friendId}
+          friendName={chatWith.friendName}
+          t={t}
+          onClose={() => setChatWith(null)}
+        />
       )}
 
       <main className="app-map-area">
