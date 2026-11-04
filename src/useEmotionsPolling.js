@@ -45,7 +45,12 @@ export function useEmotionsPolling(bounds, sessionId, onBatch) {
     }
 
     fetchOnce();
-    const id = setInterval(fetchOnce, 3000);
+    // 5s, not 3s: this query re-runs per *viewer*, not per voter. At a packed
+    // venue/festival, the real scaling risk isn't vote volume (Postgres
+    // handles that fine) — it's thousands of phones all polling the same
+    // small area simultaneously. A longer interval is a cheap, safe way to
+    // cut that load by ~40% with no visible loss of "liveness".
+    const id = setInterval(fetchOnce, 5000);
 
     return () => {
       cancelled = true;

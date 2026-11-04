@@ -117,7 +117,8 @@ export function usePersonalMood(coords, sessionId) {
     }
 
     fetchMood();
-    const id = setInterval(fetchMood, 15000);
+    // 20s — this is a per-viewer poll too; see useMoodGrid.js for why that matters at scale.
+    const id = setInterval(fetchMood, 20000);
 
     return () => {
       cancelled = true;

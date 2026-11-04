@@ -1,5 +1,7 @@
 # EmoMap → Cloudflare Pages deploy
 
+> **STATUS UPDATE (COMPLETED):** Steps 1–5 are all done! The Cloudflare Pages project **`emomap`** is configured (Production + Preview env vars set), live at **`https://emomap.pages.dev/`**, and the Supabase Auth **Site URL** (`https://emomap.pages.dev`) + **Redirect URLs** (`https://emomap.pages.dev/**`, `https://*.emomap.pages.dev/**`) have been saved. See [`CLOUDFLARE_STATUS.md`](./CLOUDFLARE_STATUS.md) for full details — only `git push origin main` and the post-push smoke test remain.
+
 Written for: an AI assistant (Gemini) executing this hand-off, with the project owner present to click through dashboard steps and approve anything account-specific.
 
 ## Context

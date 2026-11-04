@@ -87,7 +87,8 @@ export function useEmotionsStats(bounds, sessionId) {
     fetchStats();
 
     // utána 15 másodpercenként frissítünk
-    const id = setInterval(fetchStats, 15000);
+    // 20s — this is a per-viewer poll too; see useMoodGrid.js for why that matters at scale.
+    const id = setInterval(fetchStats, 20000);
 
     return () => {
       cancelled = true;

@@ -3,6 +3,10 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
+// Individual per-vote pulse flashes only render at this zoom or closer —
+// see the PULSES effect below for why.
+const PULSE_MIN_ZOOM = 8;
+
 const EMOTION_COLORS = {
   happy:     '#34c759',
   bored:     '#8e8e93',
@@ -241,6 +245,8 @@ export function MapView({
     const map = mapRef.current;
     if (!map || !pulses || pulses.length === 0) return;
 
+    const zoom = map.getZoom();
+
     // Only fresh, valid pulses
     const fresh = pulses.filter(p => {
       if (renderedPulseIds.current.has(p.id)) return false;
@@ -248,16 +254,30 @@ export function MapView({
     });
     if (fresh.length === 0) return;
 
+    // Mark everything fresh as handled now, regardless of whether it's
+    // actually drawn below — otherwise the same id gets re-filtered on
+    // every subsequent pulses update until its 3s window passes.
+    fresh.forEach(p => renderedPulseIds.current.add(p.id));
+
+    // Below this zoom, an individual vote flash is noise, not signal — a
+    // world/country view is supposed to read as one calm, aggregated mood
+    // cloud (the mood-grid layer), not hundreds of simultaneous blinking
+    // dots from everyone voting at once. Confirmed with an actual stress
+    // test (demo mode, hundreds of events/sec): without this gate the
+    // pulse layer visually drowns out the grid and looks like noise.
+    if (zoom < PULSE_MIN_ZOOM) {
+      setTimeout(() => {
+        fresh.forEach(p => renderedPulseIds.current.delete(p.id));
+      }, 3000);
+      return;
+    }
+
     const clusters = clusterPulses(fresh);
-    const zoom = map.getZoom();
 
     clusters.forEach(({ lat, lng, color }) => {
-      // Mark all contributing pulse IDs as rendered
-      fresh.forEach(p => {
-        if (Math.abs(p.lat - lat) < 0.005 && Math.abs(p.lng - lng) < 0.005) {
-          renderedPulseIds.current.add(p.id);
-        }
-      });
+      const idsInCluster = fresh
+        .filter(p => Math.abs(p.lat - lat) < 0.005 && Math.abs(p.lng - lng) < 0.005)
+        .map(p => p.id);
 
       const basePx = Math.min(48, Math.max(4, metersToPixels(lat, zoom, 80)));
 
@@ -290,7 +310,10 @@ export function MapView({
 
       setTimeout(() => {
         marker.remove();
-        renderedPulseIds.current.delete; // allow re-use after 3 s
+        // Was previously `renderedPulseIds.current.delete;` with no argument
+        // and no call — a no-op that silently leaked every vote id for the
+        // life of the page. Actually release the ids this entry owns.
+        idsInCluster.forEach(id => renderedPulseIds.current.delete(id));
         activePulseMarkers.current = activePulseMarkers.current.filter(e => e !== entry);
       }, 3000);
     });
@@ -307,7 +330,13 @@ export function MapView({
     moodGridCells?.forEach(cell => {
       const key = cell.key;
       visibleKeys.add(key);
-      const px = metersToPixels(cell.lat, zoom, 20000);
+      // Size the glow to the cell's ACTUAL real-world footprint (cell.size is in
+      // degrees), not a hardcoded 20km — at low zoom cells are tens to hundreds
+      // of km wide, so a fixed 20km glow renders as a tiny hard dot instead of
+      // the intended soft, overlapping "weather" blob. A 1.4x factor lets
+      // neighboring cells blend into each other instead of leaving visible gaps.
+      const cellMeters = (cell.size || 0.01) * 111000;
+      const px = metersToPixels(cell.lat, zoom, cellMeters * 1.4);
 
       if (markers.has(key)) {
         const m = markers.get(key);

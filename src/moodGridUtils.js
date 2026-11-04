@@ -11,6 +11,14 @@ export const EMOTION_RGB = {
   hype:      [191, 90, 242],
 };
 
+// Hard safety ceiling on rendered cells, independent of how much underlying
+// data exists. Each cell becomes a real DOM node with a blur() filter and a
+// running animation — that doesn't scale by itself, no matter how few grid
+// cells geography would otherwise produce. If we ever exceed this, keep the
+// most-active cells (the ones that actually matter visually) and drop the rest
+// rather than degrading every device for everyone simultaneously voting.
+export const MAX_RENDERED_CELLS = 400;
+
 export function calculateCellSize(zoomLevel) {
   const baseSizeDeg = 0.01;
   const size = baseSizeDeg * Math.pow(2, 10 - zoomLevel);
@@ -83,6 +91,11 @@ export function buildGridCells(rows, cellSizeDeg) {
       size: cellSizeDeg,
       key,
     });
+  }
+
+  if (result.length > MAX_RENDERED_CELLS) {
+    result.sort((a, b) => b.total - a.total);
+    return result.slice(0, MAX_RENDERED_CELLS);
   }
   return result;
 }
