@@ -14,14 +14,14 @@ import { useEmotionalMirror } from './useEmotionalMirror';
 import { useReplay, REPLAY_HOURS } from './useReplay';
 import { useVenues } from './useVenues';
 import { useIncomingRequestCount } from './useFriends';
-import VenueClaim from './components/VenueClaim';
+import VenueCRM from './components/VenueCRM';
+import VenueModal from './components/VenueModal';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
 import ShareCard from './components/ShareCard';
 import Profile from './components/Profile';
 import Friends from './components/Friends';
-import { IconPin } from './components/Icons';
 import Chat from './components/Chat';
 import { useUnreadMessageCount } from './useChat';
 import ProfileDetails from './components/ProfileDetails';
@@ -95,7 +95,8 @@ export default function App() {
   const [searchError, setSearchError] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
-  const [showVenueClaim, setShowVenueClaim] = useState(false);
+  const [showVenueCRM, setShowVenueCRM] = useState(false);
+  const [viewVenueId, setViewVenueId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [chatWith, setChatWith] = useState(null); // { friendId, friendName } | null
@@ -179,7 +180,7 @@ export default function App() {
   }, [isLoading]);
 
   const moodGrid = useMoodGrid(debouncedBounds, SESSION_ID, debouncedZoom, demoData);
-  const { venues, refresh: refreshVenues } = useVenues(debouncedBounds);
+  const { venues } = useVenues(debouncedBounds);
 
   // Replay auto-advance: loop through the 24 pre-built hourly grids while playing
   useEffect(() => {
@@ -375,6 +376,7 @@ export default function App() {
           onLogout={handleLogout}
           onOpenFriends={() => { setShowProfile(false); setShowFriends(true); }}
           onOpenDetails={() => { setShowProfile(false); setShowOwnDetails(true); }}
+          onOpenVenueCRM={() => { setShowProfile(false); setShowVenueCRM(true); }}
         />
       )}
 
@@ -422,6 +424,7 @@ export default function App() {
           personalAuraLocation={lastVoteLocation}
           moodGridCells={showReplay && hourlyGrids ? hourlyGrids[replayHour] : moodGrid.cells}
           venues={venues}
+          onVenueClick={setViewVenueId}
         />
 
         {showInfo && (
@@ -460,26 +463,24 @@ export default function App() {
             </form>
             {searchError && <div className="info-warn">{searchError}</div>}
 
-            <button
-              type="button"
-              className="info-panel-close"
-              onClick={() => { setShowInfo(false); setShowVenueClaim(true); }}
-              disabled={!coords}
-            >
-              <IconPin width={14} height={14} style={{ verticalAlign: '-2px', marginRight: 4 }} />
-              {t('venue_claim_open')}
-            </button>
             <button type="button" className="info-panel-close" onClick={() => setShowInfo(false)}>{t('close')}</button>
           </div>
         )}
 
-        {showVenueClaim && (
-          <VenueClaim
-            coords={coords}
+        {showVenueCRM && (
+          <VenueCRM
             userId={userId}
+            coords={coords}
             t={t}
-            onClose={() => setShowVenueClaim(false)}
-            onClaimed={refreshVenues}
+            onClose={() => setShowVenueCRM(false)}
+          />
+        )}
+
+        {viewVenueId && (
+          <VenueModal
+            venueId={viewVenueId}
+            t={t}
+            onClose={() => setViewVenueId(null)}
           />
         )}
 

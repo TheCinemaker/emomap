@@ -389,7 +389,7 @@ button { font-family: inherit; }
      (real phone chrome included) that pushed it above the visible area
      with no way to scroll back up to it, so the card couldn't be closed.
      Now it sits inside the panel's own bounds, same pattern as every
-     other modal's close button (Profile/Friends/VenueClaim). */
+     other modal's close button (Profile/Friends/VenueModal/VenueCRM). */
   position: absolute;
   top: 10px;
   right: 10px;
@@ -439,61 +439,6 @@ button { font-family: inherit; }
 }
 .share-card-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-/* ── Venue claim modal ── */
-.venue-claim-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.venue-claim-panel {
-  width: 100%;
-  max-width: 340px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 22px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.venue-claim-title { margin: 0 0 6px; font-size: 18px; font-weight: 700; color: var(--fg); }
-.venue-claim-hint { margin: 0 0 16px; font-size: 13px; color: var(--fg-muted); line-height: 1.4; }
-
-.venue-claim-form { display: flex; flex-direction: column; gap: 12px; }
-.venue-claim-form input {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border);
-  color: var(--fg);
-  padding: 11px 13px;
-  border-radius: 10px;
-  font-size: 14px;
-  outline: none;
-}
-.venue-claim-form input:focus { border-color: var(--accent); }
-
-.venue-claim-error { color: var(--danger); font-size: 12px; }
-
-.venue-claim-actions { display: flex; gap: 10px; justify-content: flex-end; }
-.venue-claim-btn {
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--fg);
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-}
-.venue-claim-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.venue-claim-btn:disabled { opacity: 0.5; cursor: default; }
 
 /* ── Profile modal ── */
 .profile-overlay {
@@ -602,6 +547,8 @@ button { font-family: inherit; }
   cursor: pointer;
 }
 .profile-friends-btn:hover { background: rgba(255, 255, 255, 0.04); }
+.profile-partner-btn { border-color: #f5b400; color: #f5b400; }
+.profile-partner-btn:hover { background: rgba(245, 180, 0, 0.08); }
 
 .profile-logout {
   margin-top: 10px;
@@ -972,6 +919,191 @@ button { font-family: inherit; }
   border-bottom: 1px solid var(--border);
 }
 .details-view-row:last-child { border-bottom: none; }
+
+/* ── Venue flyer modal (public) ── */
+.venue-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.venue-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.venue-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+}
+
+.venue-modal-status { font-size: 13px; color: var(--fg-muted); text-align: center; padding: 20px 0; }
+
+.venue-modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding-right: 30px; }
+.venue-modal-logo {
+  width: 48px; height: 48px; border-radius: 50%; flex: 0 0 auto;
+  background-color: rgba(255, 255, 255, 0.06); background-size: cover; background-position: center;
+  display: grid; place-items: center; color: var(--fg-dim);
+}
+.venue-modal-header-text { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.venue-modal-name { margin: 0; font-size: 17px; font-weight: 700; color: var(--fg); }
+.venue-modal-mood { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+.venue-modal-flyer { width: 100%; border-radius: 12px; margin-bottom: 12px; display: block; }
+.venue-modal-headline { margin: 0 0 6px; font-size: 15px; font-weight: 700; color: var(--fg); }
+.venue-modal-description { margin: 0 0 14px; font-size: 13px; color: var(--fg-muted); line-height: 1.5; white-space: pre-wrap; }
+
+.venue-modal-actions { display: flex; gap: 10px; }
+.venue-modal-btn {
+  flex: 1;
+  padding: 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.venue-modal-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Venue partner CRM (admin) ── */
+.venue-crm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.venue-crm-panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.venue-crm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: -20px;
+  margin: -20px -20px 10px;
+  padding: 20px 20px 10px;
+  background: var(--bg-elev);
+  z-index: 1;
+}
+.venue-crm-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--fg); }
+.venue-crm-close { background: transparent; border: none; color: var(--fg-muted); font-size: 24px; line-height: 1; cursor: pointer; }
+.venue-crm-loading { font-size: 13px; color: var(--fg-muted); }
+.venue-crm-hint { font-size: 12px; color: var(--fg-muted); margin: 0 0 10px; line-height: 1.4; }
+
+.venue-crm-map-wrap { position: relative; height: 180px; border-radius: 12px; overflow: hidden; margin-bottom: 14px; border: 1px solid var(--border); }
+.venue-crm-map { width: 100%; height: 100%; }
+.venue-crm-pin {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -100%);
+  color: var(--accent-2);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  pointer-events: none;
+}
+
+.venue-crm-stats { display: flex; justify-content: space-around; margin-bottom: 16px; }
+.venue-crm-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.venue-crm-stat span { font-size: 20px; font-weight: 800; color: var(--fg); text-transform: none; letter-spacing: normal; }
+
+.venue-crm-form { display: flex; flex-direction: column; gap: 10px; }
+.venue-crm-form input[type="text"],
+.venue-crm-form input[type="url"],
+.venue-crm-form select,
+.venue-crm-form textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+}
+.venue-crm-form input:focus, .venue-crm-form select:focus, .venue-crm-form textarea:focus { border-color: var(--accent); }
+
+.venue-crm-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.venue-crm-upload-row input[type="file"] { display: none; }
+.venue-crm-upload-label { font-size: 12px; color: var(--fg-muted); flex: 0 0 auto; min-width: 48px; }
+.venue-crm-upload-btn {
+  margin-left: auto;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.venue-crm-logo-preview { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+.venue-crm-flyer-preview { width: 56px; height: 36px; border-radius: 6px; object-fit: cover; }
+
+.venue-crm-error { font-size: 12px; color: var(--danger); }
+.venue-crm-save {
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.venue-crm-save:disabled { opacity: 0.6; cursor: default; }
 .details-view-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); flex: 0 0 auto; }
 .details-view-value { font-size: 13px; color: var(--fg); text-align: right; word-break: break-word; }
 
@@ -981,11 +1113,28 @@ button { font-family: inherit; }
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--bg-elev-strong);
+  background-color: var(--bg-elev-strong);
+  background-size: cover;
+  background-position: center;
   border: 2px solid var(--accent-2);
   color: var(--accent-2);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   cursor: pointer;
+}
+
+/* VIP (boosted) partners get a bigger, glowing ring — this visual gap is
+   literally the thing the paid tier sells, per VENUE_CRM_PLAN.md. */
+.venue-pin--vip {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f5b400;
+  box-shadow: 0 0 0 3px rgba(245, 180, 0, 0.35), 0 0 16px 2px rgba(245, 180, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4);
+  animation: venue-vip-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes venue-vip-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(245, 180, 0, 0.35), 0 0 16px 2px rgba(245, 180, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(245, 180, 0, 0.2), 0 0 24px 6px rgba(245, 180, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.4); }
 }
 
 /* ── BOTTOM: vote prompt + emotion grid ── */

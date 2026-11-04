@@ -88,6 +88,7 @@ export function MapView({
   personalAuraLocation,
   moodGridCells,
   venues,
+  onVenueClick,
   onZoomChange
 }) {
   const mapContainerRef    = useRef(null);
@@ -384,12 +385,25 @@ export function MapView({
     return () => { markers.forEach(m => m.remove()); markers.clear(); };
   }, []);
 
-  // ── Venues (free-claim pins; a boosted layer comes later) ─────────────────
+  // ── Venues (partner POI pins — tier controls the zoom it appears at) ──────
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const markers = venueMarkersRef.current;
     const visibleIds = new Set();
+
+    // basic partners show up once you're at street level; vip (paid-up)
+    // partners show from a whole-city zoom out, with a glowing ring — this
+    // is literally the product the Boost tier sells.
+    const updateVisibility = () => {
+      const zoom = map.getZoom();
+      markers.forEach((m, id) => {
+        const v = venues?.find((x) => x.id === id);
+        if (!v) return;
+        const minZoom = v.tier === 'vip' ? 11 : 14;
+        m.getElement().style.display = zoom >= minZoom ? '' : 'none';
+      });
+    };
 
     venues?.forEach((venue) => {
       visibleIds.add(venue.id);
@@ -398,9 +412,17 @@ export function MapView({
         return;
       }
       const el = document.createElement('div');
-      el.className = 'venue-pin';
+      el.className = `venue-pin${venue.tier === 'vip' ? ' venue-pin--vip' : ''}`;
       el.title = venue.name;
-      el.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="${PIN_PATH_D}"/></svg>`;
+      if (venue.logo_url) {
+        el.style.backgroundImage = `url(${venue.logo_url})`;
+      } else {
+        el.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="${PIN_PATH_D}"/></svg>`;
+      }
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onVenueClick?.(venue.id);
+      });
       markers.set(venue.id, new maplibregl.Marker({ element: el })
         .setLngLat([venue.lng, venue.lat]).addTo(map));
     });
@@ -408,7 +430,11 @@ export function MapView({
     markers.forEach((m, id) => {
       if (!visibleIds.has(id)) { m.remove(); markers.delete(id); }
     });
-  }, [venues]);
+
+    updateVisibility();
+    map.on('zoom', updateVisibility);
+    return () => map.off('zoom', updateVisibility);
+  }, [venues, onVenueClick]);
 
   useEffect(() => {
     const markers = venueMarkersRef.current;

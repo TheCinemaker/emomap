@@ -34,7 +34,7 @@ function computeStreak(dates) {
   return streak;
 }
 
-export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends, onOpenDetails }) {
+export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends, onOpenDetails, onOpenVenueCRM }) {
   const [profile, setProfile] = useState(null);
   const [voteCount, setVoteCount] = useState(null);
   const [streak, setStreak] = useState(null);
@@ -45,7 +45,7 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
     let cancelled = false;
     async function load() {
       const [{ data: profileData }, { count }, { data: recentVotes }] = await Promise.all([
-        supabase.from('profiles').select('username, avatar_url, created_at').eq('id', userId).single(),
+        supabase.from('profiles').select('username, avatar_url, created_at, is_partner').eq('id', userId).single(),
         supabase.from('emotions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
         supabase.from('emotions').select('inserted_at').eq('user_id', userId)
           .order('inserted_at', { ascending: false }).limit(STREAK_SAMPLE_LIMIT),
@@ -150,6 +150,11 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
         <button type="button" className="profile-friends-btn" onClick={onOpenDetails}>
           {t('details_open')}
         </button>
+        {profile?.is_partner && (
+          <button type="button" className="profile-friends-btn profile-partner-btn" onClick={onOpenVenueCRM}>
+            🏢 {t('venue_crm_open')}
+          </button>
+        )}
         <button type="button" className="profile-logout" onClick={onLogout}>{t('logout')}</button>
       </div>
     </div>

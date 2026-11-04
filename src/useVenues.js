@@ -12,7 +12,8 @@ export function useVenues(bounds) {
     const { north, south, east, west } = bounds;
     const { data, error } = await supabase
       .from('venues')
-      .select('id, name, lat, lng, owner_id')
+      .select('id, name, lat, lng, owner_id, category, logo_url, tier')
+      .eq('is_active', true)
       .gte('lat', south).lte('lat', north)
       .gte('lng', west).lte('lng', east)
       .limit(MAX_VENUES);
