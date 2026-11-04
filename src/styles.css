@@ -1303,7 +1303,12 @@ button { font-family: inherit; }
   background: radial-gradient(circle, var(--cell-color) 0%, transparent 70%);
   filter: blur(30px);
   animation: pulse-aura 4s infinite ease-in-out;
-  mix-blend-mode: screen;
+  /* Was mix-blend-mode: screen, tuned for the old dark basemap — screen
+     lightens everything it touches, so over a light map it washes the
+     color out to near-invisible instead of a readable tinted patch.
+     Plain alpha compositing (normal) reads as a colored heatmap overlay
+     on a light map, which is what we actually want now. */
+  mix-blend-mode: normal;
 }
 
 @keyframes pulse-aura {

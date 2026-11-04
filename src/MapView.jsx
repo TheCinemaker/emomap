@@ -107,15 +107,14 @@ export function MapView({
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      // OpenFreeMap's native dark vector style — verified directly (style
-      // JSON, vector tiles, glyphs and sprite all return 200 with
-      // `access-control-allow-origin: *`, no API key) before switching,
-      // not assumed from the suggestion that prompted it. Replaces the
-      // previous CSS filter:invert() hack on raster OSM daylight tiles:
-      // crisper labels at every zoom, smaller payload, no key to ever hit
-      // a quota on (unlike CARTO's dark basemaps, which now require one —
-      // checked live the same day).
-      style: 'https://tiles.openfreemap.org/styles/dark',
+      // OpenFreeMap's "liberty" style — the standard, full-detail light OSM
+      // look (green parks, labeled streets, familiar like Google/Apple
+      // Maps). Switched from the "dark" style on user feedback: a mood map
+      // is only useful if you can actually recognize the area well enough
+      // to go there, and the dark/minimal style fought that. Still
+      // OpenFreeMap: free, keyless, verified live (style JSON, vector
+      // tiles, glyphs, sprite all 200 with proper CORS) before using it.
+      style: 'https://tiles.openfreemap.org/styles/liberty',
       center: [19, 47],
       zoom: 4,
       attributionControl: false

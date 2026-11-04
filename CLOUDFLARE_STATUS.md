@@ -57,7 +57,7 @@ After pushing `main`:
 
 ## 3. Live Supabase Project Migrations (`sfbuabdzkpzwpffuuwva`) — ✅ ALL EXECUTED & VERIFIED
 
-All 6 SQL migrations have been executed in the live Supabase SQL Editor and verified:
+All 8 SQL migrations have been executed in the live Supabase SQL Editor and verified:
 
 | Check | Status |
 |---|---|
@@ -66,7 +66,9 @@ All 6 SQL migrations have been executed in the live Supabase SQL Editor and veri
 | `storage.buckets` `'avatars'` (`supabase_avatars_schema.sql` — public bucket + `avatars_select`/`insert`/`update`/`delete` policies) | ✅ `true` |
 | `public.get_mood_grid` (`supabase_mood_grid_rpc.sql` — RPC function + `anon`/`authenticated` grants + `emotions_lat_lng_inserted_idx`) | ✅ `true` |
 | `public.friendships` (`supabase_friends_schema.sql` — table + RLS + 4 policies + 2 indexes + `authenticated`/`service_role` grants) | ✅ `true` |
-| `supabase_realtime` publication (`supabase_realtime_fix.sql` + `friendships` — live updates enabled on `friendships`, `reels`, and `venues`) | ✅ `{friendships,reels,venues}` |
+| `public.messages` (`supabase_messages_schema.sql` — table + RLS + 3 policies + 2 indexes + `authenticated`/`service_role` grants) | ✅ `true` |
+| `public.profile_details` & `public.get_visible_profile_details(uuid)` (`supabase_profile_details_schema.sql` — table + RLS + RPC function with `search_path = public` + `authenticated` grant) | ✅ `true` |
+| `supabase_realtime` publication (`supabase_realtime_fix.sql` + `friendships` + `messages` — live updates enabled on `friendships`, `messages`, `reels`, and `venues`) | ✅ `{friendships,messages,reels,venues}` |
 
 
 
