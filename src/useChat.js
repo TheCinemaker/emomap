@@ -19,15 +19,19 @@ export function useChat(userId, friendId) {
   const load = useCallback(async () => {
     if (!userId || !friendId) return;
     setLoading(true);
+    // order DESC + limit, then reverse client-side — ordering ASC with a
+    // LIMIT returns the OLDEST N messages, not the most recent N, so any
+    // conversation past 200 messages would load ancient history instead
+    // of what was actually recent.
     const { data, error } = await supabase
       .from('messages')
       .select('id, sender_id, recipient_id, body, created_at, read_at')
       .or(`and(sender_id.eq.${userId},recipient_id.eq.${friendId}),and(sender_id.eq.${friendId},recipient_id.eq.${userId})`)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(HISTORY_LIMIT);
 
     if (error) { console.error('[Chat] load error:', error); setLoading(false); return; }
-    setMessages(data || []);
+    setMessages((data || []).slice().reverse());
     setLoading(false);
     markRead(data || []);
   }, [userId, friendId, markRead]);
@@ -44,7 +48,25 @@ export function useChat(userId, friendId) {
           (m.sender_id === userId && m.recipient_id === friendId) ||
           (m.sender_id === friendId && m.recipient_id === userId);
         if (!isThisConversation) return;
-        setMessages((prev) => (prev.some((p) => p.id === m.id) ? prev : [...prev, m]));
+        setMessages((prev) => {
+          if (prev.some((p) => p.id === m.id)) return prev; // already have the real row
+          // If this is our own message, the realtime push can arrive before
+          // the insert().select() HTTP response that normally swaps the
+          // optimistic temp_ entry for the real one — in that order, the
+          // temp entry is still in `prev` with a different id, so the dedupe
+          // check above never catches it, and send()'s later swap plus this
+          // append would otherwise both land, duplicating the bubble. Match
+          // by the known temp_ prefix + sender + body and replace in place.
+          const tempIdx = prev.findIndex(
+            (p) => typeof p.id === 'string' && p.id.startsWith('temp_') && p.sender_id === m.sender_id && p.body === m.body
+          );
+          if (tempIdx !== -1) {
+            const next = prev.slice();
+            next[tempIdx] = m;
+            return next;
+          }
+          return [...prev, m];
+        });
         if (m.recipient_id === userId) markRead([m]);
       })
       .subscribe();

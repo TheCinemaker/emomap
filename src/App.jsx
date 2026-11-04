@@ -54,11 +54,36 @@ function jitterCoords(lat, lng) {
 
 const EMOTION_COLOR_BY_ID = EMOTIONS.reduce((acc, e) => ({ ...acc, [e.id]: e.color }), {});
 
+const LAST_VOTE_AT_KEY = 'emomap_last_vote_at';
+
+// Without this, the cooldown timer reset on every refresh (plain useState),
+// so the vote buttons looked re-enabled seconds after voting even though
+// the server-side rate limit would still reject the insert — confusing,
+// not actually a security hole (Postgres enforces the real limit), but a
+// real "this looks broken" bug.
+function loadLastVoteAt() {
+  try {
+    const raw = localStorage.getItem(LAST_VOTE_AT_KEY);
+    return raw ? Number(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [userId, setUserId] = useState(null);
-  const [lastVoteAt, setLastVoteAt] = useState(null);
+  const [lastVoteAt, setLastVoteAtState] = useState(loadLastVoteAt);
+  const setLastVoteAt = useCallback((value) => {
+    setLastVoteAtState(value);
+    try {
+      if (value) localStorage.setItem(LAST_VOTE_AT_KEY, String(value));
+      else localStorage.removeItem(LAST_VOTE_AT_KEY);
+    } catch {
+      // ignore storage failures (private mode, etc.) — in-memory state still works
+    }
+  }, []);
 
   const [mapBounds, setMapBounds] = useState(null);
   const [mapZoom, setMapZoom] = useState(4);
