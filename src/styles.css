@@ -161,16 +161,6 @@ button { font-family: inherit; }
   height: 100%;
 }
 
-/* Dark-mode the stock OSM daylight raster tiles via filter instead of a
-   different tile provider — CARTO's free "dark_all"/"dark_matter" basemaps
-   now return an "API KEY REQUIRED" watermark without a key (checked live,
-   not from memory), and Stadia/MapTiler dark styles need a key too. This
-   only touches the actual map canvas, not our DOM-based pulse/grid/venue
-   markers, which sit in a separate layer on top of it. */
-.map-container .maplibregl-canvas {
-  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.9) saturate(0.85);
-}
-
 /* ── Info Panel (floating sheet over the map) ── */
 .info-panel {
   position: absolute;
@@ -652,13 +642,16 @@ button { font-family: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: -20px -20px 14px;
-  padding: 20px 20px 14px;
   /* Pinned to the top of .friends-panel's own scroll area — otherwise a
      long friends list scrolls the close button out of view with it
-     (the same bug just fixed on the Share Card's close button). */
+     (the same bug just fixed on the Share Card's close button).
+     top must match the negative margin, not 0 — with top:0 the negative
+     margin confuses how much flow-space this reserves, and the next
+     sibling renders overlapping it instead of below it. */
   position: sticky;
-  top: 0;
+  top: -20px;
+  margin: -20px -20px 14px;
+  padding: 20px 20px 14px;
   background: var(--bg-elev);
   z-index: 1;
 }
@@ -718,6 +711,18 @@ button { font-family: inherit; }
   flex: 0 0 auto;
 }
 
+.friends-row-identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
 .friends-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .friends-row-name { font-size: 14px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .friends-row > .friends-row-name { flex: 1; min-width: 0; }
@@ -864,6 +869,106 @@ button { font-family: inherit; }
   cursor: pointer;
 }
 .chat-input-row button:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Profile/Friend details ── */
+.details-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.details-panel {
+  width: 100%;
+  max-width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: -20px;
+  margin: -20px -20px 10px;
+  padding: 20px 20px 10px;
+  background: var(--bg-elev);
+  z-index: 1;
+}
+.details-title { margin: 0; font-size: 17px; font-weight: 700; color: var(--fg); }
+.details-close { background: transparent; border: none; color: var(--fg-muted); font-size: 24px; line-height: 1; cursor: pointer; }
+
+.details-hint { font-size: 12px; color: var(--fg-muted); line-height: 1.4; margin: 0 0 16px; }
+.details-loading { font-size: 13px; color: var(--fg-muted); }
+
+.details-form { display: flex; flex-direction: column; gap: 12px; }
+.details-row { display: flex; flex-direction: column; gap: 5px; }
+.details-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); }
+
+.details-input-wrap { display: flex; align-items: center; gap: 6px; }
+.details-input-wrap input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 9px 11px;
+  border-radius: 9px;
+  font-size: 13px;
+  outline: none;
+}
+.details-input-wrap input:focus { border-color: var(--accent); }
+
+.details-eye {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg-dim);
+  cursor: pointer;
+}
+.details-eye.is-visible { color: var(--success); border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
+
+.details-save {
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.details-save:disabled { opacity: 0.6; cursor: default; }
+
+.details-view-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+}
+.details-view-row:last-child { border-bottom: none; }
+.details-view-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-muted); flex: 0 0 auto; }
+.details-view-value { font-size: 13px; color: var(--fg); text-align: right; word-break: break-word; }
 
 .venue-pin {
   display: grid;

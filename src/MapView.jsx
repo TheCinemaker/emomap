@@ -107,18 +107,15 @@ export function MapView({
 
     const map = new maplibregl.Map({
       container: mapContainerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          'osm-tiles': {
-            type: 'raster',
-            tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-            tileSize: 256,
-            attribution: '© OpenStreetMap contributors'
-          }
-        },
-        layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm-tiles', minzoom: 0, maxzoom: 19 }]
-      },
+      // OpenFreeMap's native dark vector style — verified directly (style
+      // JSON, vector tiles, glyphs and sprite all return 200 with
+      // `access-control-allow-origin: *`, no API key) before switching,
+      // not assumed from the suggestion that prompted it. Replaces the
+      // previous CSS filter:invert() hack on raster OSM daylight tiles:
+      // crisper labels at every zoom, smaller payload, no key to ever hit
+      // a quota on (unlike CARTO's dark basemaps, which now require one —
+      // checked live the same day).
+      style: 'https://tiles.openfreemap.org/styles/dark',
       center: [19, 47],
       zoom: 4,
       attributionControl: false

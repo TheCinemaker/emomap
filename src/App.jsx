@@ -23,6 +23,8 @@ import Friends from './components/Friends';
 import { IconPin } from './components/Icons';
 import Chat from './components/Chat';
 import { useUnreadMessageCount } from './useChat';
+import ProfileDetails from './components/ProfileDetails';
+import FriendDetails from './components/FriendDetails';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -66,6 +68,8 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
   const [chatWith, setChatWith] = useState(null); // { friendId, friendName } | null
+  const [showOwnDetails, setShowOwnDetails] = useState(false);
+  const [viewDetailsFor, setViewDetailsFor] = useState(null); // { friendId, friendName } | null
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
@@ -337,7 +341,12 @@ export default function App() {
           onClose={() => setShowProfile(false)}
           onLogout={handleLogout}
           onOpenFriends={() => { setShowProfile(false); setShowFriends(true); }}
+          onOpenDetails={() => { setShowProfile(false); setShowOwnDetails(true); }}
         />
+      )}
+
+      {showOwnDetails && (
+        <ProfileDetails userId={userId} t={t} onClose={() => setShowOwnDetails(false)} />
       )}
 
       {showFriends && (
@@ -346,6 +355,16 @@ export default function App() {
           t={t}
           onClose={() => setShowFriends(false)}
           onOpenChat={(friendId, friendName) => setChatWith({ friendId, friendName })}
+          onOpenDetails={(friendId, friendName) => setViewDetailsFor({ friendId, friendName })}
+        />
+      )}
+
+      {viewDetailsFor && (
+        <FriendDetails
+          friendId={viewDetailsFor.friendId}
+          friendName={viewDetailsFor.friendName}
+          t={t}
+          onClose={() => setViewDetailsFor(null)}
         />
       )}
 

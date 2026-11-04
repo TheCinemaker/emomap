@@ -9,7 +9,7 @@ import { IconUser } from './Icons';
 
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
 
-export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends }) {
+export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends, onOpenDetails }) {
   const [profile, setProfile] = useState(null);
   const [voteCount, setVoteCount] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -108,6 +108,9 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
 
         <button type="button" className="profile-friends-btn" onClick={onOpenFriends}>
           {t('friends_open')}
+        </button>
+        <button type="button" className="profile-friends-btn" onClick={onOpenDetails}>
+          {t('details_open')}
         </button>
         <button type="button" className="profile-logout" onClick={onLogout}>{t('logout')}</button>
       </div>

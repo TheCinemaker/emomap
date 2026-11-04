@@ -14,7 +14,7 @@ function minutesAgo(iso) {
   return Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
 }
 
-export default function Friends({ userId, t, onClose, onOpenChat }) {
+export default function Friends({ userId, t, onClose, onOpenChat, onOpenDetails }) {
   const { friends, incoming, outgoing, loading, searchUsers, sendRequestTo, respond, removeFriend, cancelRequest } = useFriends(userId);
   const [search, setSearch] = useState('');
   const [results, setResults] = useState([]);
@@ -124,20 +124,27 @@ export default function Friends({ userId, t, onClose, onOpenChat }) {
             const moodColor = f.mood ? EMOTION_COLOR_BY_ID[f.mood.emotion] : null;
             return (
               <div key={f.friendshipId} className="friends-row">
-                <div className="friends-row-avatar" style={{ backgroundImage: f.profile?.avatar_url ? `url(${f.profile.avatar_url})` : undefined }}>
-                  {!f.profile?.avatar_url && <IconUser width={18} height={18} />}
-                </div>
-                <div className="friends-row-info">
-                  <span className="friends-row-name">{f.profile?.username || '—'}</span>
-                  <span className="friends-row-mood">
-                    {f.mood ? (
-                      <>
-                        <span className="friends-mood-dot" style={{ background: moodColor }} />
-                        {t(`emotion_${f.mood.emotion}`)} · {t('friends_mood_ago', { m: minutesAgo(f.mood.inserted_at) })}
-                      </>
-                    ) : t('friends_mood_none')}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="friends-row-identity"
+                  onClick={() => onOpenDetails?.(f.otherId, f.profile?.username)}
+                  title={t('details_open')}
+                >
+                  <div className="friends-row-avatar" style={{ backgroundImage: f.profile?.avatar_url ? `url(${f.profile.avatar_url})` : undefined }}>
+                    {!f.profile?.avatar_url && <IconUser width={18} height={18} />}
+                  </div>
+                  <div className="friends-row-info">
+                    <span className="friends-row-name">{f.profile?.username || '—'}</span>
+                    <span className="friends-row-mood">
+                      {f.mood ? (
+                        <>
+                          <span className="friends-mood-dot" style={{ background: moodColor }} />
+                          {t(`emotion_${f.mood.emotion}`)} · {t('friends_mood_ago', { m: minutesAgo(f.mood.inserted_at) })}
+                        </>
+                      ) : t('friends_mood_none')}
+                    </span>
+                  </div>
+                </button>
                 <button
                   type="button"
                   className="friends-row-chat"
