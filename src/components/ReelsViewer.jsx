@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { compressImage } from '../imageCompress';
 
 const REELS_LIMIT = 15;
 const EXPIRES_MINUTES = 20;
@@ -55,11 +56,11 @@ export default function ReelsViewer({ session, t }) {
     setUploadError(null);
 
     try {
-      const ext      = file.name.split('.').pop();
-      const filePath = `${session.user.id}_${Date.now()}.${ext}`;
+      const compressed = await compressImage(file, { maxDim: 1200, quality: 0.8 });
+      const filePath = `${session.user.id}_${Date.now()}.jpg`;
 
       const { error: upErr } = await supabase.storage
-        .from('reels').upload(filePath, file);
+        .from('reels').upload(filePath, compressed, { contentType: 'image/jpeg' });
       if (upErr) throw upErr;
 
       const { data: { publicUrl } } = supabase.storage

@@ -6,25 +6,55 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { LANGUAGES } from '../i18n';
 import { IconUser } from './Icons';
+import { compressImage } from '../imageCompress';
 
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
+const DAY_MS = 24 * 60 * 60 * 1000;
+const STREAK_SAMPLE_LIMIT = 400; // plenty for any realistic streak length
+
+// dates: unique 'YYYY-MM-DD' strings, sorted descending (today-first).
+// Counts consecutive days ending today — or ending yesterday if today's
+// vote hasn't happened yet, so the streak doesn't look "broken" at 00:01.
+function computeStreak(dates) {
+  if (!dates.length) return 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let cursor = new Date(`${todayStr}T00:00:00Z`);
+  if (dates[0] !== todayStr) cursor = new Date(cursor.getTime() - DAY_MS);
+
+  let streak = 0;
+  for (const d of dates) {
+    const cursorStr = cursor.toISOString().slice(0, 10);
+    if (d === cursorStr) {
+      streak += 1;
+      cursor = new Date(cursor.getTime() - DAY_MS);
+    } else if (d < cursorStr) {
+      break;
+    }
+  }
+  return streak;
+}
 
 export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends, onOpenDetails }) {
   const [profile, setProfile] = useState(null);
   const [voteCount, setVoteCount] = useState(null);
+  const [streak, setStreak] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      const [{ data: profileData }, { count }] = await Promise.all([
+      const [{ data: profileData }, { count }, { data: recentVotes }] = await Promise.all([
         supabase.from('profiles').select('username, avatar_url, created_at').eq('id', userId).single(),
         supabase.from('emotions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+        supabase.from('emotions').select('inserted_at').eq('user_id', userId)
+          .order('inserted_at', { ascending: false }).limit(STREAK_SAMPLE_LIMIT),
       ]);
       if (cancelled) return;
       setProfile(profileData);
       setVoteCount(count ?? 0);
+      const dates = [...new Set((recentVotes || []).map((r) => r.inserted_at.slice(0, 10)))];
+      setStreak(computeStreak(dates));
     }
     if (userId) load();
     return () => { cancelled = true; };
@@ -37,12 +67,12 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
     setUploading(true);
     setError(null);
     try {
-      const ext = file.name.split('.').pop();
-      const path = `${userId}/avatar.${ext}`;
+      const compressed = await compressImage(file, { maxDim: 600, quality: 0.85 });
+      const path = `${userId}/avatar.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, file, { upsert: true });
+        .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -88,9 +118,17 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
         {memberSince && <p className="profile-meta">{t('profile_member_since', { date: memberSince })}</p>}
         {error && <div className="profile-error">{error}</div>}
 
-        <div className="profile-stat">
-          <span className="profile-stat-value">{voteCount ?? '…'}</span>
-          <span className="profile-stat-label">{t('profile_total_votes')}</span>
+        <div className="profile-stats-row">
+          <div className="profile-stat">
+            <span className="profile-stat-value">{voteCount ?? '…'}</span>
+            <span className="profile-stat-label">{t('profile_total_votes')}</span>
+          </div>
+          {streak > 0 && (
+            <div className="profile-stat">
+              <span className="profile-stat-value">🔥 {streak}</span>
+              <span className="profile-stat-label">{t('profile_streak')}</span>
+            </div>
+          )}
         </div>
 
         <div className="profile-lang-row">

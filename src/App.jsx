@@ -13,6 +13,7 @@ import { useLang } from './i18n';
 import { useEmotionalMirror } from './useEmotionalMirror';
 import { useReplay, REPLAY_HOURS } from './useReplay';
 import { useVenues } from './useVenues';
+import { useIncomingRequestCount } from './useFriends';
 import VenueClaim from './components/VenueClaim';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
@@ -33,10 +34,15 @@ const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000;
 const PERSONAL_AURA_LIFETIME_MS = 3 * 60 * 1000; // 180s — own pulse stays this long after voting
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
-const VOTE_JITTER_METERS = 150; // privacy: never store the user's exact GPS point
+// Lowered from 150m on user request: at 150m, a disco or a dense old-town
+// street (Kőszeg: a venue every ~30m) all blur into one indistinguishable
+// blob, defeating the actual point of the map — seeing where to go. 10m is
+// close to a phone GPS fix's own native noise anyway, so it still adds a
+// little protection without erasing which specific place someone's at.
+const VOTE_JITTER_METERS = 10;
 
-// Random offset within VOTE_JITTER_METERS so stored pins can't be used to pinpoint
-// a real address (e.g. "always stressed outside this one clinic").
+// Random offset within VOTE_JITTER_METERS so stored pins aren't pinned to
+// the literal GPS coordinate.
 function jitterCoords(lat, lng) {
   const earthRadius = 6371000;
   const angle = Math.random() * 2 * Math.PI;
@@ -74,6 +80,8 @@ export default function App() {
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
   const unreadCount = useUnreadMessageCount(userId);
+  const incomingRequestCount = useIncomingRequestCount(userId);
+  const profileBadgeCount = unreadCount + incomingRequestCount;
   const { hourlyGrids, loading: replayLoading, load: loadReplay, reset: resetReplay } = useReplay();
   const [showReplay, setShowReplay] = useState(false);
   const [replayHour, setReplayHour] = useState(REPLAY_HOURS - 1);
@@ -322,7 +330,7 @@ export default function App() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2c0-2.76-3.58-5-8-5Z"/>
             </svg>
-            {unreadCount > 0 && <span className="app-icon-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+            {profileBadgeCount > 0 && <span className="app-icon-badge">{profileBadgeCount > 9 ? '9+' : profileBadgeCount}</span>}
           </button>
         </div>
         <ReelsViewer session={session} t={t} />

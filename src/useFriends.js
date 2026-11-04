@@ -65,7 +65,17 @@ export function useFriends(userId) {
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+    if (!userId) return;
+    // friendships has Realtime enabled — without this, a new/accepted
+    // request only shows up the next time Friends.jsx happens to remount.
+    const channel = supabase
+      .channel(`friendships-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, refresh)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [refresh, userId]);
 
   // Live, partial-match discovery — "findable like on Facebook", not a
   // blind exact-username submit. Excludes yourself; the caller (Friends.jsx)
@@ -114,4 +124,32 @@ export function useFriends(userId) {
   const cancelRequest = removeFriend;
 
   return { friends, incoming, outgoing, loading, searchUsers, sendRequestTo, respond, removeFriend, cancelRequest };
+}
+
+// Lightweight — just a count, for a header badge, without the full
+// friends/profiles/moods join useFriends() does.
+export function useIncomingRequestCount(userId) {
+  const [count, setCount] = useState(0);
+
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    const { count: c } = await supabase
+      .from('friendships')
+      .select('id', { count: 'exact', head: true })
+      .eq('addressee_id', userId)
+      .eq('status', 'pending');
+    setCount(c ?? 0);
+  }, [userId]);
+
+  useEffect(() => {
+    refresh();
+    if (!userId) return;
+    const channel = supabase
+      .channel(`friend-requests-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, refresh)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [userId, refresh]);
+
+  return count;
 }

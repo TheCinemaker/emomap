@@ -91,6 +91,7 @@ const dict = {
     profile_avatar_error: 'Could not upload photo.',
     profile_member_since: 'Member since {date}',
     profile_total_votes: 'moods shared',
+    profile_streak: 'day streak',
 
     friends_open: 'Friends',
     friends_title: 'Friends',
@@ -220,6 +221,7 @@ const dict = {
     profile_avatar_error: 'Nem sikerült feltölteni a képet.',
     profile_member_since: 'Tag {date} óta',
     profile_total_votes: 'megosztott hangulat',
+    profile_streak: 'napos széria',
 
     friends_open: 'Barátok',
     friends_title: 'Barátok',
@@ -349,6 +351,7 @@ const dict = {
     profile_avatar_error: 'Foto konnte nicht hochgeladen werden.',
     profile_member_since: 'Mitglied seit {date}',
     profile_total_votes: 'geteilte Stimmungen',
+    profile_streak: 'Tage-Serie',
 
     friends_open: 'Freunde',
     friends_title: 'Freunde',
