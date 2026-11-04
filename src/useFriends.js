@@ -1,0 +1,117 @@
+// src/useFriends.js
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from './supabaseClient';
+
+const MOOD_SAMPLE_LIMIT = 500;
+
+export function useFriends(userId) {
+  const [friends, setFriends] = useState([]);   // accepted: { friendshipId, otherId, profile, mood }
+  const [incoming, setIncoming] = useState([]); // pending, addressed to me
+  const [outgoing, setOutgoing] = useState([]); // pending, sent by me
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+
+    const { data: rows, error } = await supabase
+      .from('friendships')
+      .select('id, requester_id, addressee_id, status, created_at')
+      .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
+
+    if (error) {
+      console.error('[Friends] fetch error:', error);
+      setLoading(false);
+      return;
+    }
+
+    const accepted = [];
+    const inc = [];
+    const out = [];
+    for (const row of rows || []) {
+      const otherId = row.requester_id === userId ? row.addressee_id : row.requester_id;
+      const entry = { friendshipId: row.id, otherId };
+      if (row.status === 'accepted') accepted.push(entry);
+      else if (row.status === 'pending') {
+        if (row.addressee_id === userId) inc.push(entry);
+        else out.push(entry);
+      }
+    }
+
+    const allIds = [...new Set([...accepted, ...inc, ...out].map((r) => r.otherId))];
+    let profileById = {};
+    if (allIds.length) {
+      const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', allIds);
+      profileById = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+    }
+
+    let moodById = {};
+    const friendIds = accepted.map((f) => f.otherId);
+    if (friendIds.length) {
+      const { data: moods } = await supabase
+        .from('emotions')
+        .select('user_id, emotion, inserted_at')
+        .in('user_id', friendIds)
+        .order('inserted_at', { ascending: false })
+        .limit(MOOD_SAMPLE_LIMIT);
+      for (const m of moods || []) {
+        if (!moodById[m.user_id]) moodById[m.user_id] = m; // first hit per user = most recent (desc order)
+      }
+    }
+
+    setFriends(accepted.map((f) => ({ ...f, profile: profileById[f.otherId], mood: moodById[f.otherId] || null })));
+    setIncoming(inc.map((f) => ({ ...f, profile: profileById[f.otherId] })));
+    setOutgoing(out.map((f) => ({ ...f, profile: profileById[f.otherId] })));
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  // Live, partial-match discovery — "findable like on Facebook", not a
+  // blind exact-username submit. Excludes yourself; the caller (Friends.jsx)
+  // filters out people who are already friends/pending.
+  const searchUsers = useCallback(async (term) => {
+    const q = term.trim();
+    if (q.length < 2 || !userId) return [];
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .ilike('username', `%${q}%`)
+      .neq('id', userId)
+      .limit(8);
+    if (error) {
+      console.error('[Friends] search error:', error);
+      return [];
+    }
+    return data || [];
+  }, [userId]);
+
+  const sendRequestTo = useCallback(async (targetId) => {
+    const { error } = await supabase.from('friendships').insert({ requester_id: userId, addressee_id: targetId });
+    if (error) {
+      if (error.code === '23505') throw new Error('already_requested');
+      throw error;
+    }
+    await refresh();
+  }, [userId, refresh]);
+
+  const respond = useCallback(async (friendshipId, accept) => {
+    if (accept) {
+      await supabase.from('friendships')
+        .update({ status: 'accepted', responded_at: new Date().toISOString() })
+        .eq('id', friendshipId);
+    } else {
+      await supabase.from('friendships').delete().eq('id', friendshipId);
+    }
+    await refresh();
+  }, [refresh]);
+
+  const removeFriend = useCallback(async (friendshipId) => {
+    await supabase.from('friendships').delete().eq('id', friendshipId);
+    await refresh();
+  }, [refresh]);
+
+  const cancelRequest = removeFriend;
+
+  return { friends, incoming, outgoing, loading, searchUsers, sendRequestTo, respond, removeFriend, cancelRequest };
+}

@@ -8,7 +8,7 @@ import { LANGUAGES } from '../i18n';
 
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
 
-export default function Profile({ userId, lang, setLang, t, onClose, onLogout }) {
+export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends }) {
   const [profile, setProfile] = useState(null);
   const [voteCount, setVoteCount] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -105,6 +105,9 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout })
           ))}
         </div>
 
+        <button type="button" className="profile-friends-btn" onClick={onOpenFriends}>
+          {t('friends_open')}
+        </button>
         <button type="button" className="profile-logout" onClick={onLogout}>{t('logout')}</button>
       </div>
     </div>

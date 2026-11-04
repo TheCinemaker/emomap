@@ -55,22 +55,17 @@ After pushing `main`:
 
 ---
 
-## 3. Live Supabase Project Audit Findings (`sfbuabdzkpzwpffuuwva`)
+## 3. Live Supabase Project Migrations (`sfbuabdzkpzwpffuuwva`) — ✅ ALL EXECUTED & VERIFIED
 
-While setting the Auth URL configuration in Supabase, Gemini also audited the live database, storage buckets, Realtime publications, and Security/Performance Advisors against the current frontend codebase:
+All 5 SQL migrations have been executed in the live Supabase SQL Editor and verified:
 
-1. **🔴 Missing `venues` (and `venue_boosts`) tables in live DB:**
-   - Currently only 5 tables exist in `public`: `emotions`, `match_photos`, `matches`, `profiles`, `reels`.
-   - `supabase_venues_schema.sql` (and `supabase_venue_boosts_schema.sql`) have **not** been executed in the live Supabase SQL Editor yet, so `useVenues.js` (`supabase.from('venues').select(...)`) and `VenueClaim.jsx` will fail with `relation "public.venues" does not exist`.
-2. **🔴 Missing `avatars` Storage Bucket & RLS policies:**
-   - Currently only `reels` and `matches` buckets exist in Supabase Storage.
-   - `src/components/Profile.jsx` calls `supabase.storage.from('avatars').upload(path, file, { upsert: true })`.
-   - The `avatars` bucket (public) plus `storage.objects` `SELECT`, `INSERT`, and `UPDATE` policies (needed for `upsert: true`) must be created, otherwise avatar uploads fail with `Bucket not found`.
-3. **🟠 Supabase Realtime (`supabase_realtime` publication) has 0 tables enabled:**
-   - `ReelsViewer.jsx` (`reels_live`) and `useVenues.js` (`venues_live`) subscribe to `postgres_changes`, but `REALTIME` is currently disabled on all tables.
-   - Run: `alter publication supabase_realtime add table public.reels, public.venues;`
-4. **🟡 Supabase Security & Performance Advisor warnings:**
-   - `SECURITY DEFINER` functions (`handle_new_user`, `check_emotion_rate_limit`, `try_join_match`, `email_for_username`) lack `SET search_path = public`.
-   - Missing indexes on foreign keys: `reels(user_id)`, `matches(user1_id)`, `matches(user2_id)`, `match_photos(match_id)`, `match_photos(sender_id)`.
+| Check | Status |
+|---|---|
+| `public.venues` (`supabase_venues_schema.sql` — table + RLS + index + grants) | ✅ `true` |
+| `public.venue_boosts` (`supabase_venue_boosts_schema.sql` — table + RLS + indexes + grants; note: `venue_boosts_active_idx` created on `(ends_at)` without `where ends_at > now()` since `now()` is `STABLE`, not `IMMUTABLE` in Postgres index predicates) | ✅ `true` |
+| `storage.buckets` `'avatars'` (`supabase_avatars_schema.sql` — public bucket + `avatars_select`/`insert`/`update`/`delete` policies) | ✅ `true` |
+| `public.get_mood_grid` (`supabase_mood_grid_rpc.sql` — RPC function + `anon`/`authenticated` grants + `emotions_lat_lng_inserted_idx`) | ✅ `true` |
+| `supabase_realtime` publication (`supabase_realtime_fix.sql` — live updates enabled on `reels` and `venues`) | ✅ `{reels,venues}` |
+
 
 

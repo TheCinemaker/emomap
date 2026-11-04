@@ -21,7 +21,11 @@ create policy "Active boosts are viewable by everyone." on public.venue_boosts
   for select using ( true );
 
 create index if not exists venue_boosts_venue_idx on public.venue_boosts (venue_id);
-create index if not exists venue_boosts_active_idx on public.venue_boosts (ends_at) where ends_at > now();
+-- No `where ends_at > now()` predicate: Postgres requires IMMUTABLE functions
+-- in a partial index predicate, and now() is only STABLE — this was caught
+-- when actually running this migration, not assumed. A plain index on
+-- ends_at still lets "is this venue currently boosted" queries use it.
+create index if not exists venue_boosts_active_idx on public.venue_boosts (ends_at);
 
 grant select on public.venue_boosts to anon, authenticated;
 grant all on public.venue_boosts to service_role;

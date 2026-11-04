@@ -558,8 +558,22 @@ button { font-family: inherit; }
 
 .profile-lang-row { display: flex; gap: 6px; margin-top: 22px; }
 
-.profile-logout {
+.profile-friends-btn {
   margin-top: 20px;
+  width: 100%;
+  padding: 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.profile-friends-btn:hover { background: rgba(255, 255, 255, 0.04); }
+
+.profile-logout {
+  margin-top: 10px;
   width: 100%;
   padding: 11px;
   border-radius: 10px;
@@ -571,6 +585,122 @@ button { font-family: inherit; }
   cursor: pointer;
 }
 .profile-logout:hover { background: rgba(239, 68, 68, 0.08); }
+
+/* ── Friends modal ── */
+.friends-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.friends-panel {
+  width: 100%;
+  max-width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.friends-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.friends-title { margin: 0; font-size: 18px; font-weight: 700; color: var(--fg); }
+.friends-close { background: transparent; border: none; color: var(--fg-muted); font-size: 24px; line-height: 1; cursor: pointer; }
+
+.friends-add-form { display: flex; gap: 8px; margin-bottom: 4px; }
+.friends-add-form input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--fg);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  outline: none;
+}
+.friends-add-form input:focus { border-color: var(--accent); }
+
+.friends-msg { font-size: 12px; margin: 8px 0; }
+.friends-msg-error { color: var(--danger); }
+.friends-msg-info { color: var(--success); }
+
+.friends-section { margin-top: 16px; }
+.friends-section-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg-muted);
+}
+.friends-search-results { margin-top: 10px; }
+.friends-empty { font-size: 13px; color: var(--fg-muted); margin: 6px 0; }
+
+.friends-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.friends-row:last-child { border-bottom: none; }
+
+.friends-row-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255, 255, 255, 0.06);
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  flex: 0 0 auto;
+}
+
+.friends-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.friends-row-name { font-size: 14px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.friends-row > .friends-row-name { flex: 1; min-width: 0; }
+.friends-row > .friends-btn { margin-left: auto; }
+.friends-row-mood { font-size: 12px; color: var(--fg-muted); display: flex; align-items: center; gap: 6px; }
+.friends-mood-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.friends-row-pending { font-size: 12px; color: var(--fg-muted); margin-left: auto; }
+
+.friends-row-actions { display: flex; gap: 6px; margin-left: auto; }
+.friends-btn {
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.friends-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.friends-btn:disabled { opacity: 0.5; cursor: default; }
+
+.friends-row-remove {
+  background: transparent;
+  border: none;
+  color: var(--fg-dim);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+.friends-row-remove:hover { color: var(--danger); }
 
 .venue-pin {
   display: grid;
@@ -975,9 +1105,13 @@ button { font-family: inherit; }
   display: grid;
   place-items: center;
   cursor: pointer;
-  z-index: 8;
+  /* Always above the bottom overlays (.replay-bar/.mirror-toast, z:30) —
+     this is a persistent nav control, it must never become unreachable
+     just because a transient bar happens to span the same corner. */
+  z-index: 31;
   backdrop-filter: blur(8px);
 }
+.back-to-me-btn.is-disabled { opacity: 0.4; cursor: default; }
 
 /* ── Loading screen (shares the auth screen's palette, not a separate style) ── */
 .loading-screen {

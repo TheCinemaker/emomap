@@ -19,6 +19,7 @@ import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
 import ShareCard from './components/ShareCard';
 import Profile from './components/Profile';
+import Friends from './components/Friends';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -60,6 +61,7 @@ export default function App() {
   const [showShareCard, setShowShareCard] = useState(false);
   const [showVenueClaim, setShowVenueClaim] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [showFriends, setShowFriends] = useState(false);
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
@@ -328,7 +330,12 @@ export default function App() {
           t={t}
           onClose={() => setShowProfile(false)}
           onLogout={handleLogout}
+          onOpenFriends={() => { setShowProfile(false); setShowFriends(true); }}
         />
+      )}
+
+      {showFriends && (
+        <Friends userId={userId} t={t} onClose={() => setShowFriends(false)} />
       )}
 
       <main className="app-map-area">
