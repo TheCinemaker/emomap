@@ -9,7 +9,7 @@ import { usePersonalMood } from './usePersonalMood';
 import { useGeolocation } from './useGeolocation';
 import { useMoodGrid } from './useMoodGrid';
 import { useDebounce } from './useDebounce';
-import { useLang, LANGUAGES } from './i18n';
+import { useLang } from './i18n';
 import { useEmotionalMirror } from './useEmotionalMirror';
 import { useReplay, REPLAY_HOURS } from './useReplay';
 import { useVenues } from './useVenues';
@@ -18,6 +18,7 @@ import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
 import ShareCard from './components/ShareCard';
+import Profile from './components/Profile';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -58,6 +59,7 @@ export default function App() {
   const [showInfo, setShowInfo] = useState(false);
   const [showShareCard, setShowShareCard] = useState(false);
   const [showVenueClaim, setShowVenueClaim] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
@@ -279,13 +281,14 @@ export default function App() {
           </button>
           <button
             type="button"
-            className={`app-pill-btn${showReplay ? ' is-active' : ''}`}
+            className={`app-icon-btn${showReplay ? ' is-active' : ''}`}
             onClick={() => (showReplay ? handleCloseReplay() : handleOpenReplay())}
+            aria-label={t('replay_open')}
+            title={t('replay_open')}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
               <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm.75-12.5h-1.5v5.19l4.15 2.49.75-1.27-3.4-2.04V7.5Z"/>
             </svg>
-            <span>{t('replay_open')}</span>
           </button>
           <button
             type="button"
@@ -298,12 +301,34 @@ export default function App() {
               <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm1.2 11h-2.4a.8.8 0 0 1 0-1.6h.4v-4.4h-.4a.8.8 0 0 1 0-1.6h1.6c.44 0 .8.36.8.8v5.2h.4a.8.8 0 0 1 0 1.6Z"/>
             </svg>
           </button>
+          <button
+            type="button"
+            className="app-icon-btn"
+            onClick={() => setShowProfile(true)}
+            aria-label={t('profile_open')}
+            title={t('profile_open')}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2c0-2.76-3.58-5-8-5Z"/>
+            </svg>
+          </button>
         </div>
         <ReelsViewer session={session} t={t} />
       </header>
 
       {showShareCard && (
         <ShareCard userId={userId} lang={lang} t={t} onClose={() => setShowShareCard(false)} />
+      )}
+
+      {showProfile && (
+        <Profile
+          userId={userId}
+          lang={lang}
+          setLang={setLang}
+          t={t}
+          onClose={() => setShowProfile(false)}
+          onLogout={handleLogout}
+        />
       )}
 
       <main className="app-map-area">
@@ -321,23 +346,6 @@ export default function App() {
 
         {showInfo && (
           <div className="info-panel" role="dialog" aria-label={t('info')}>
-            <div className="info-panel-row info-lang-row">
-              {LANGUAGES.map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  className={`info-lang-btn${lang === code ? ' is-active' : ''}`}
-                  onClick={() => setLang(code)}
-                >
-                  {code.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div className="info-panel-row">
-              <strong>{t('user')}</strong>
-              <span className="info-panel-mono">{userId ? userId.slice(0, 8) + '…' : '—'}</span>
-              <button type="button" className="info-panel-link" onClick={handleLogout}>{t('logout')}</button>
-            </div>
             <div className="info-panel-row">
               <strong>{t('location')}</strong>
               <span className="info-panel-mono">

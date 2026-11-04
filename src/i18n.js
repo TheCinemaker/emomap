@@ -85,6 +85,12 @@ const dict = {
     venue_claim_name_placeholder: 'Venue name',
     venue_claim_submit: 'Claim',
     venue_claim_error: 'Could not claim this venue.',
+
+    profile_open: 'Profile',
+    profile_avatar_change: 'Change photo',
+    profile_avatar_error: 'Could not upload photo.',
+    profile_member_since: 'Member since {date}',
+    profile_total_votes: 'moods shared',
   },
 
   hu: {
@@ -164,6 +170,12 @@ const dict = {
     venue_claim_name_placeholder: 'Helyszín neve',
     venue_claim_submit: 'Regisztrálás',
     venue_claim_error: 'Nem sikerült felvenni ezt a helyszínt.',
+
+    profile_open: 'Profil',
+    profile_avatar_change: 'Kép módosítása',
+    profile_avatar_error: 'Nem sikerült feltölteni a képet.',
+    profile_member_since: 'Tag {date} óta',
+    profile_total_votes: 'megosztott hangulat',
   },
 
   de: {
@@ -243,6 +255,12 @@ const dict = {
     venue_claim_name_placeholder: 'Name des Ortes',
     venue_claim_submit: 'Registrieren',
     venue_claim_error: 'Dieser Ort konnte nicht registriert werden.',
+
+    profile_open: 'Profil',
+    profile_avatar_change: 'Foto ändern',
+    profile_avatar_error: 'Foto konnte nicht hochgeladen werden.',
+    profile_member_since: 'Mitglied seit {date}',
+    profile_total_votes: 'geteilte Stimmungen',
   },
 };
 
