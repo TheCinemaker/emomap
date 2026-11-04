@@ -282,6 +282,74 @@ button { font-family: inherit; }
   to   { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* ── Share Card modal ── */
+.share-card-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.share-card-panel {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.share-card-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.share-card-status {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  color: var(--fg-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.share-card-canvas {
+  width: 100%;
+  aspect-ratio: 9 / 16;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.share-card-actions { display: flex; gap: 10px; }
+
+.share-card-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--fg);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.share-card-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
 /* ── BOTTOM: vote prompt + emotion grid ── */
 .app-bottom {
   flex: 0 0 auto;

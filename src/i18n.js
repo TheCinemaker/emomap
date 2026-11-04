@@ -66,6 +66,14 @@ const dict = {
     reels_unknown: 'Unknown',
 
     mirror_not_alone: "You're not alone — {percent}% nearby feel {emotion} too right now",
+
+    share_card_open: 'My week',
+    share_card_loading: 'Building your card…',
+    share_card_no_data: 'Vote a few times this week to unlock your recap.',
+    share_card_headline: 'was your most-felt mood this week',
+    share_card_footer: '{total} votes this week · emomap.app',
+    share_card_share: 'Share',
+    share_card_download: 'Download',
   },
 
   hu: {
@@ -126,6 +134,14 @@ const dict = {
     reels_unknown: 'Ismeretlen',
 
     mirror_not_alone: 'Nem vagy egyedül — a közeledben élők {percent}%-a most is {emotion}',
+
+    share_card_open: 'Heti kártya',
+    share_card_loading: 'Készül a kártyád…',
+    share_card_no_data: 'Szavazz pár alkalommal ezen a héten, hogy legyen mit megosztanod.',
+    share_card_headline: 'volt a leggyakoribb hangulatod ezen a héten',
+    share_card_footer: '{total} szavazat ezen a héten · emomap.app',
+    share_card_share: 'Megosztás',
+    share_card_download: 'Letöltés',
   },
 
   de: {
@@ -186,6 +202,14 @@ const dict = {
     reels_unknown: 'Unbekannt',
 
     mirror_not_alone: 'Du bist nicht allein — {percent}% in deiner Nähe fühlen sich jetzt auch {emotion}',
+
+    share_card_open: 'Meine Woche',
+    share_card_loading: 'Deine Karte wird erstellt…',
+    share_card_no_data: 'Stimme diese Woche ein paar Mal ab, um deine Zusammenfassung freizuschalten.',
+    share_card_headline: 'war diese Woche deine häufigste Stimmung',
+    share_card_footer: '{total} Abstimmungen diese Woche · emomap.app',
+    share_card_share: 'Teilen',
+    share_card_download: 'Herunterladen',
   },
 };
 

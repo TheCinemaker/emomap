@@ -14,6 +14,7 @@ import { useEmotionalMirror } from './useEmotionalMirror';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import ReelsViewer from './components/ReelsViewer';
+import ShareCard from './components/ShareCard';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -52,6 +53,7 @@ export default function App() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [showShareCard, setShowShareCard] = useState(false);
 
   const { lang, setLang, t } = useLang();
   const { mirror, trigger: triggerMirror } = useEmotionalMirror();
@@ -237,6 +239,16 @@ export default function App() {
           </div>
           <button
             type="button"
+            className="app-pill-btn"
+            onClick={() => setShowShareCard(true)}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a2.99 2.99 0 1 0-1.96-2.8c0 .3.05.58.14.85L7.1 9.35a2.99 2.99 0 1 0 0 5.3l7.04 4.1c-.09.28-.14.56-.14.85a2.99 2.99 0 1 0 2.99-3.52Z"/>
+            </svg>
+            <span>{t('share_card_open')}</span>
+          </button>
+          <button
+            type="button"
             className="app-icon-btn"
             onClick={() => setShowInfo(s => !s)}
             aria-label={t('info')}
@@ -249,6 +261,10 @@ export default function App() {
         </div>
         <ReelsViewer session={session} t={t} />
       </header>
+
+      {showShareCard && (
+        <ShareCard userId={userId} lang={lang} t={t} onClose={() => setShowShareCard(false)} />
+      )}
 
       <main className="app-map-area">
         <MapView
