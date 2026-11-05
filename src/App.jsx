@@ -18,7 +18,8 @@ import VenueCRM from './components/VenueCRM';
 import VenueModal from './components/VenueModal';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
-import ReelsViewer from './components/ReelsViewer';
+import PulsesPage from './components/PulsesPage';
+import BottomNav from './components/BottomNav';
 import ShareCard from './components/ShareCard';
 import Profile from './components/Profile';
 import Friends from './components/Friends';
@@ -99,6 +100,7 @@ export default function App() {
   const [viewVenueId, setViewVenueId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showFriends, setShowFriends] = useState(false);
+  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses'
   const [chatWith, setChatWith] = useState(null); // { friendId, friendName } | null
   const [showOwnDetails, setShowOwnDetails] = useState(false);
   const [viewDetailsFor, setViewDetailsFor] = useState(null); // { friendId, friendName } | null
@@ -297,7 +299,27 @@ export default function App() {
   const handleZoomChange = useCallback((z) => setMapZoom(z), []);
   const handleLogout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
+  const handleNavChange = useCallback((tab) => {
+    if (tab === 'map') {
+      setShowFriends(false);
+      setShowProfile(false);
+      setActiveTab('map');
+    } else if (tab === 'pulses') {
+      setShowFriends(false);
+      setShowProfile(false);
+      setActiveTab('pulses');
+    } else if (tab === 'friends') {
+      setShowProfile(false);
+      setShowFriends((prev) => !prev);
+    } else if (tab === 'profile') {
+      setShowFriends(false);
+      setShowProfile((prev) => !prev);
+    }
+  }, []);
+
   if (!session) return <Auth />;
+
+  const currentNavTab = showFriends ? 'friends' : showProfile ? 'profile' : activeTab;
 
   const promptText =
     !gpsAllowed ? t('vote_prompt_need_location')
@@ -308,59 +330,48 @@ export default function App() {
     <div className="app-shell">
       {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
 
-      <header className="app-top">
-        <div className="app-top-row">
-          <div className="app-brand">
-            <span className="app-brand-icon" aria-hidden>🌍</span>
-            <h1 className="app-brand-name">EmoMap</h1>
+      {activeTab === 'map' && (
+        <header className="app-top">
+          <div className="app-top-row">
+            <div className="app-brand">
+              <span className="app-brand-icon" aria-hidden>🌍</span>
+              <h1 className="app-brand-name">EmoMap</h1>
+            </div>
+            <button
+              type="button"
+              className="app-pill-btn"
+              onClick={() => setShowShareCard(true)}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a2.99 2.99 0 1 0-1.96-2.8c0 .3.05.58.14.85L7.1 9.35a2.99 2.99 0 1 0 0 5.3l7.04 4.1c-.09.28-.14.56-.14.85a2.99 2.99 0 1 0 2.99-3.52Z"/>
+              </svg>
+              <span>{t('share_card_open')}</span>
+            </button>
+            <button
+              type="button"
+              className={`app-icon-btn${showReplay ? ' is-active' : ''}`}
+              onClick={() => (showReplay ? handleCloseReplay() : handleOpenReplay())}
+              aria-label={t('replay_open')}
+              title={t('replay_open')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm.75-12.5h-1.5v5.19l4.15 2.49.75-1.27-3.4-2.04V7.5Z"/>
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="app-icon-btn"
+              onClick={() => setShowInfo(s => !s)}
+              aria-label={t('info')}
+              title={t('info')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm1.2 11h-2.4a.8.8 0 0 1 0-1.6h.4v-4.4h-.4a.8.8 0 0 1 0-1.6h1.6c.44 0 .8.36.8.8v5.2h.4a.8.8 0 0 1 0 1.6Z"/>
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            className="app-pill-btn"
-            onClick={() => setShowShareCard(true)}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a2.99 2.99 0 1 0-1.96-2.8c0 .3.05.58.14.85L7.1 9.35a2.99 2.99 0 1 0 0 5.3l7.04 4.1c-.09.28-.14.56-.14.85a2.99 2.99 0 1 0 2.99-3.52Z"/>
-            </svg>
-            <span>{t('share_card_open')}</span>
-          </button>
-          <button
-            type="button"
-            className={`app-icon-btn${showReplay ? ' is-active' : ''}`}
-            onClick={() => (showReplay ? handleCloseReplay() : handleOpenReplay())}
-            aria-label={t('replay_open')}
-            title={t('replay_open')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm.75-12.5h-1.5v5.19l4.15 2.49.75-1.27-3.4-2.04V7.5Z"/>
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="app-icon-btn"
-            onClick={() => setShowInfo(s => !s)}
-            aria-label={t('info')}
-            title={t('info')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm1.2 11h-2.4a.8.8 0 0 1 0-1.6h.4v-4.4h-.4a.8.8 0 0 1 0-1.6h1.6c.44 0 .8.36.8.8v5.2h.4a.8.8 0 0 1 0 1.6Z"/>
-            </svg>
-          </button>
-          <button
-            type="button"
-            className="app-icon-btn"
-            onClick={() => setShowProfile(true)}
-            aria-label={t('profile_open')}
-            title={t('profile_open')}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-              <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-4.42 0-8 2.24-8 5v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2c0-2.76-3.58-5-8-5Z"/>
-            </svg>
-            {profileBadgeCount > 0 && <span className="app-icon-badge">{profileBadgeCount > 9 ? '9+' : profileBadgeCount}</span>}
-          </button>
-        </div>
-        <ReelsViewer session={session} t={t} />
-      </header>
+        </header>
+      )}
 
       {showShareCard && (
         <ShareCard userId={userId} lang={lang} t={t} onClose={() => setShowShareCard(false)} />
@@ -413,7 +424,11 @@ export default function App() {
         />
       )}
 
-      <main className="app-map-area">
+      {activeTab === 'pulses' && (
+        <PulsesPage session={session} t={t} />
+      )}
+
+      <main className="app-map-area" style={{ display: activeTab === 'map' ? undefined : 'none' }}>
         <MapView
           coords={coords}
           viewCenter={viewCenter}
@@ -517,30 +532,39 @@ export default function App() {
         )}
       </main>
 
-      <footer className="app-bottom">
-        <div className="vote-prompt">{promptText}</div>
-        <div className="emotion-grid">
-          {EMOTIONS.map((e) => {
-            const disabled = !canVote || !coords || !userId;
-            const Icon = e.Icon;
-            const label = t(`emotion_${e.id}`);
-            return (
-              <button
-                key={e.id}
-                type="button"
-                className={`emotion-chip${lastVotedEmotion === e.id ? ' is-voted' : ''}`}
-                onClick={() => handleVote(e.id)}
-                disabled={disabled}
-                style={{ '--chip-color': e.color }}
-                aria-label={label}
-              >
-                <span className="emotion-chip-icon"><Icon width={22} height={22} /></span>
-                <span className="emotion-chip-label">{label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </footer>
+      {activeTab === 'map' && (
+        <footer className="app-bottom">
+          <div className="vote-prompt">{promptText}</div>
+          <div className="emotion-grid">
+            {EMOTIONS.map((e) => {
+              const disabled = !canVote || !coords || !userId;
+              const Icon = e.Icon;
+              const label = t(`emotion_${e.id}`);
+              return (
+                <button
+                  key={e.id}
+                  type="button"
+                  className={`emotion-chip${lastVotedEmotion === e.id ? ' is-voted' : ''}`}
+                  onClick={() => handleVote(e.id)}
+                  disabled={disabled}
+                  style={{ '--chip-color': e.color }}
+                  aria-label={label}
+                >
+                  <span className="emotion-chip-icon"><Icon width={22} height={22} /></span>
+                  <span className="emotion-chip-label">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </footer>
+      )}
+
+      <BottomNav
+        activeTab={currentNavTab}
+        onChangeTab={handleNavChange}
+        friendsBadgeCount={profileBadgeCount}
+        t={t}
+      />
     </div>
   );
 }
