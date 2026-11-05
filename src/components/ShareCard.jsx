@@ -120,9 +120,32 @@ async function drawCard(canvas, stats, lang, t, avatarUrl) {
   const sys = '-apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
   ctx.textAlign = 'center';
 
+  // No emoji on the generated card either — draw a tiny vector globe glyph
+  // (same shape as Icons.jsx's IconGlobe: outer circle + meridian ellipse +
+  // equator line) to the left of the brand text instead of relying on the
+  // system emoji font to render 🌍 consistently across devices.
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = `600 44px ${sys}`;
-  ctx.fillText('🌍 EmoMap', W / 2, 140);
+  const brandText = 'EmoMap';
+  const brandIconR = 20;
+  const brandGap = 14;
+  const brandTextWidth = ctx.measureText(brandText).width;
+  const brandTotalWidth = brandIconR * 2 + brandGap + brandTextWidth;
+  const brandStartX = W / 2 - brandTotalWidth / 2;
+  const brandIconCx = brandStartX + brandIconR;
+  const brandIconCy = 140 - 14;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.arc(brandIconCx, brandIconCy, brandIconR, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(brandIconCx, brandIconCy, brandIconR * 0.45, brandIconR, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(brandIconCx - brandIconR, brandIconCy); ctx.lineTo(brandIconCx + brandIconR, brandIconCy); ctx.stroke();
+  ctx.restore();
+
+  ctx.textAlign = 'left';
+  ctx.fillText(brandText, brandStartX + brandIconR * 2 + brandGap, 140);
+  ctx.textAlign = 'center';
 
   const locale = LOCALE_BY_LANG[lang] || 'en-US';
   const now = new Date();

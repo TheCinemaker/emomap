@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useLang, LANGUAGES } from '../i18n';
+import { IconGlobe, IconCheck, IconClose } from './Icons';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
@@ -149,7 +150,7 @@ export default function Auth() {
         </div>
 
         <div className="auth-brand">
-          <span className="auth-logo" aria-hidden>🌍</span>
+          <IconGlobe className="auth-logo" aria-hidden width={28} height={28} />
           <h1 className="auth-brand-name">EmoMap</h1>
         </div>
         <p className="auth-tagline">
@@ -193,8 +194,8 @@ export default function Auth() {
                   />
                   <span className="auth-input-status" aria-hidden>
                     {usernameStatus === 'checking' && '…'}
-                    {usernameStatus === 'available' && '✓'}
-                    {usernameStatus === 'taken' && '✕'}
+                    {usernameStatus === 'available' && <IconCheck width={16} height={16} />}
+                    {usernameStatus === 'taken' && <IconClose width={16} height={16} />}
                     {usernameStatus === 'invalid' && '!'}
                   </span>
                 </div>

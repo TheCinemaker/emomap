@@ -9,7 +9,7 @@ import { supabase } from '../supabaseClient';
 import { EMOTIONS } from '../emotions';
 import { compressImage } from '../imageCompress';
 import { moderateImageFile } from '../imageModeration';
-import { IconUser } from './Icons';
+import { IconUser, IconBolt, IconHeart, IconRepeat, IconTrash, IconFlag, IconCamera, IconCheck, IconClose } from './Icons';
 
 const PULSES_LIMIT = 40;
 const EXPIRES_HOURS = 24;
@@ -446,7 +446,7 @@ export default function PulsesPage({ session, t }) {
       {/* Top floating bar */}
       <div className="pulses-topbar">
         <div className="pulses-topbar-title">
-          <span className="pulses-bolt" aria-hidden>⚡</span>
+          <IconBolt className="pulses-bolt" aria-hidden width={18} height={18} />
           <h2>Pulses</h2>
           <span className="pulses-global-pill">{t('pulses_global_badge')}</span>
         </div>
@@ -474,7 +474,7 @@ export default function PulsesPage({ session, t }) {
 
         {!loading && pulses.length === 0 && (
           <div className="pulses-empty">
-            <span className="pulses-empty-icon">⚡</span>
+            <IconBolt className="pulses-empty-icon" width={40} height={40} />
             <h3>{t('pulses_empty_title')}</h3>
             <p>{t('pulses_empty_hint')}</p>
             <button
@@ -515,7 +515,7 @@ export default function PulsesPage({ session, t }) {
 
               {heartBurstId === pulse.id && (
                 <div className="pulse-heart-burst" aria-hidden>
-                  ❤️
+                  <IconHeart width={64} height={64} />
                 </div>
               )}
 
@@ -523,7 +523,7 @@ export default function PulsesPage({ session, t }) {
               <div className="pulse-meta" onClick={(e) => e.stopPropagation()}>
                 {repostCnt > 0 && (
                   <div className="pulse-repost-pill">
-                    🔁{' '}
+                    <IconRepeat width={13} height={13} />{' '}
                     {pulse.latestReposter
                       ? t('pulses_reposted_by', { user: pulse.latestReposter })
                       : `${repostCnt}× ${t('pulses_reposted_badge')}`}
@@ -618,7 +618,7 @@ export default function PulsesPage({ session, t }) {
                     onClick={() => handleDeleteOwn(pulse.id)}
                     title={t('pulses_delete')}
                   >
-                    <span className="pulse-action-circle">🗑️</span>
+                    <span className="pulse-action-circle"><IconTrash width={18} height={18} /></span>
                   </button>
                 ) : (
                   <button
@@ -628,7 +628,7 @@ export default function PulsesPage({ session, t }) {
                     disabled={!!reportedByMe[pulse.id]}
                     title={t('pulses_report')}
                   >
-                    <span className="pulse-action-circle">🚩</span>
+                    <span className="pulse-action-circle"><IconFlag width={18} height={18} /></span>
                   </button>
                 )}
               </div>
@@ -708,7 +708,7 @@ export default function PulsesPage({ session, t }) {
         <div className="pulses-sheet-backdrop" onClick={() => setComposerOpen(false)}>
           <div className="pulses-composer" onClick={(e) => e.stopPropagation()}>
             <div className="pulses-sheet-header">
-              <h3>⚡ {t('pulses_new_title')}</h3>
+              <h3><IconBolt width={16} height={16} /> {t('pulses_new_title')}</h3>
               <button
                 type="button"
                 className="pulses-sheet-close"
@@ -724,7 +724,7 @@ export default function PulsesPage({ session, t }) {
                   <img src={previewUrl} alt="Preview" className="pulses-picker-preview" />
                 ) : (
                   <div className="pulses-picker-placeholder">
-                    <span className="pulses-picker-icon">📸</span>
+                    <IconCamera className="pulses-picker-icon" width={30} height={30} />
                     <span>{t('pulses_pick_photo')}</span>
                   </div>
                 )}
@@ -745,13 +745,13 @@ export default function PulsesPage({ session, t }) {
 
               {aiStatus === 'approved' && (
                 <div className="pulses-ai-banner is-approved">
-                  ✅ {t('pulses_ai_approved')}
+                  <IconCheck width={15} height={15} /> {t('pulses_ai_approved')}
                 </div>
               )}
 
               {aiError && (
                 <div className="pulses-ai-banner is-rejected">
-                  🚫 {aiError}
+                  <IconClose width={15} height={15} /> {aiError}
                 </div>
               )}
 
@@ -788,7 +788,7 @@ export default function PulsesPage({ session, t }) {
                 className="pulses-publish-btn"
                 disabled={!selectedFile || aiStatus !== 'approved' || uploading}
               >
-                {uploading ? '…' : `⚡ ${t('pulses_publish_btn')}`}
+                {uploading ? '…' : (<><IconBolt width={15} height={15} /> {t('pulses_publish_btn')}</>)}
               </button>
             </form>
           </div>

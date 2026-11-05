@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { LANGUAGES } from '../i18n';
-import { IconUser } from './Icons';
+import { IconUser, IconPencil, IconFire, IconBuilding } from './Icons';
 import { compressImage } from '../imageCompress';
 
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
@@ -110,7 +110,7 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
           ) : (
             <IconUser className="profile-avatar-fallback" width={40} height={40} aria-hidden />
           )}
-          <span className="profile-avatar-edit">{uploading ? '…' : '✎'}</span>
+          <span className="profile-avatar-edit">{uploading ? '…' : <IconPencil width={14} height={14} />}</span>
           <input type="file" accept="image/*" onChange={handleAvatarChange} disabled={uploading} />
         </label>
 
@@ -125,7 +125,7 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
           </div>
           {streak > 0 && (
             <div className="profile-stat">
-              <span className="profile-stat-value">🔥 {streak}</span>
+              <span className="profile-stat-value"><IconFire width={16} height={16} /> {streak}</span>
               <span className="profile-stat-label">{t('profile_streak')}</span>
             </div>
           )}
@@ -152,7 +152,7 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
         </button>
         {profile?.is_partner && (
           <button type="button" className="profile-friends-btn profile-partner-btn" onClick={onOpenVenueCRM}>
-            🏢 {t('venue_crm_open')}
+            <IconBuilding width={16} height={16} /> {t('venue_crm_open')}
           </button>
         )}
         <button type="button" className="profile-logout" onClick={onLogout}>{t('logout')}</button>

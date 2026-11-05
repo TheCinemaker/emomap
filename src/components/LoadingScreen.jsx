@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IconGlobe } from './Icons';
 
 const LoadingScreen = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
@@ -20,7 +21,7 @@ const LoadingScreen = ({ onComplete }) => {
 
   return (
     <div className="loading-screen">
-      <span className="loading-screen-icon" aria-hidden>🌍</span>
+      <IconGlobe className="loading-screen-icon" aria-hidden width={48} height={48} />
       <h1 className="loading-screen-name">EmoMap</h1>
       <div className="loading-screen-bar-track">
         <div className="loading-screen-bar-fill" style={{ width: `${Math.min(100, progress)}%` }} />

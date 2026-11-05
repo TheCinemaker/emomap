@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { fetchVenueMood } from '../venueMood';
-import { IconUser } from './Icons';
+import { IconUser, IconPin } from './Icons';
 
 export default function VenueModal({ venueId, t, onClose }) {
   const [venue, setVenue] = useState(null);
@@ -79,7 +79,7 @@ export default function VenueModal({ venueId, t, onClose }) {
                 </button>
               )}
               <button type="button" className="venue-modal-btn" onClick={handleDirections}>
-                {t('venue_modal_directions')}
+                <IconPin width={15} height={15} /> {t('venue_modal_directions')}
               </button>
             </div>
           </>

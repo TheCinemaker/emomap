@@ -2,7 +2,6 @@
 // Shared "what's the vibe at this specific venue right now" query — used by
 // both the public VenueModal and the partner's own VenueCRM stats panel.
 import { supabase } from './supabaseClient';
-import { EMOTIONS } from './emotions';
 
 const RADIUS_METERS = 200;
 // 1h: this is displayed as "X% Hype right now" — it was inconsistent with
@@ -35,6 +34,5 @@ export async function fetchVenueMood(lat, lng) {
 
 export function venueMoodLabel(mood, t) {
   if (!mood) return null;
-  const emoji = EMOTIONS.find((e) => e.id === mood.dominant)?.id === 'hype' ? '🔥' : '';
-  return `${emoji ? emoji + ' ' : ''}${mood.percent}% ${t(`emotion_${mood.dominant}`)}`;
+  return `${mood.percent}% ${t(`emotion_${mood.dominant}`)}`;
 }

@@ -26,6 +26,7 @@ import Chat from './components/Chat';
 import { useUnreadMessageCount } from './useChat';
 import ProfileDetails from './components/ProfileDetails';
 import FriendDetails from './components/FriendDetails';
+import { IconGlobe, IconPlay, IconPause } from './components/Icons';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -343,7 +344,7 @@ export default function App() {
         <header className="app-top">
           <div className="app-top-row">
             <div className="app-brand">
-              <span className="app-brand-icon" aria-hidden>🌍</span>
+              <IconGlobe className="app-brand-icon" aria-hidden width={22} height={22} />
               <h1 className="app-brand-name">EmoMap</h1>
             </div>
             <button
@@ -510,7 +511,7 @@ export default function App() {
         {showReplay && (
           <div className="replay-bar" role="group" aria-label={t('replay_open')}>
             <button type="button" className="replay-icon-btn" onClick={() => setReplayPlaying((p) => !p)}>
-              {replayPlaying ? '❙❙' : '▶'}
+              {replayPlaying ? <IconPause width={14} height={14} /> : <IconPlay width={14} height={14} />}
             </button>
             <input
               type="range"
