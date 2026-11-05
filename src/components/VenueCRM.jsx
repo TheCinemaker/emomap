@@ -15,7 +15,7 @@ import { IconPin } from './Icons';
 
 const CATEGORIES = ['club', 'bar', 'restaurant', 'cafe', 'event'];
 
-export default function VenueCRM({ userId, coords, t, onClose }) {
+export default function VenueCRM({ userId, coords, t, onClose, onSaved }) {
   const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
 
@@ -31,6 +31,18 @@ export default function VenueCRM({ userId, coords, t, onClose }) {
   const [error, setError] = useState(null);
   const [mood, setMood] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // useGeolocation uses watchPosition, so `coords` gets a brand-new object
+  // every few seconds for as long as the app is open — including while this
+  // panel is open and the user is actively dragging the pin. Depending the
+  // load effect on `coords` directly meant every GPS tick re-ran it and
+  // silently snapped `center` back to the live GPS fix (or, for an existing
+  // venue, back to the saved lat/lng), discarding whatever the user had just
+  // dragged to — reported live: placing the pin in Dubai didn't stick. A ref
+  // lets `load()` read whatever coords are current AT THE ONE MOMENT it
+  // actually runs (mount), without the effect re-running on every tick.
+  const coordsRef = useRef(coords);
+  useEffect(() => { coordsRef.current = coords; }, [coords]);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,16 +60,18 @@ export default function VenueCRM({ userId, coords, t, onClose }) {
         setFlyerUrl(data.flyer_url);
         setCenter({ lat: data.lat, lng: data.lng });
         fetchVenueMood(data.lat, data.lng).then((m) => { if (!cancelled) setMood(m); });
-      } else if (coords) {
-        setCenter({ lat: coords.lat, lng: coords.lng });
       } else {
-        setCenter({ lat: 47.4979, lng: 19.0402 }); // fallback: Budapest, if no GPS yet
+        const c = coordsRef.current;
+        setCenter(c ? { lat: c.lat, lng: c.lng } : { lat: 47.4979, lng: 19.0402 }); // fallback: Budapest, if no GPS yet
       }
       setLoading(false);
     }
     load();
     return () => { cancelled = true; };
-  }, [userId, coords]);
+    // Intentionally only [userId] — see the comment above for why `coords`
+    // must not be a dependency here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   // Init the mini map exactly once, as soon as we know a starting center.
   useEffect(() => {
@@ -148,6 +162,10 @@ export default function VenueCRM({ userId, coords, t, onClose }) {
       if (saveError) throw saveError;
       setVenue(data);
       setSaved(true);
+      // Fly the main map to it at a zoom that clears even the 'basic' tier's
+      // visibility floor (14) — otherwise a partner can save successfully
+      // and then not see their own pin with no clue why.
+      onSaved?.({ lat: data.lat, lng: data.lng });
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       console.error('Venue save failed:', err);

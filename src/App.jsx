@@ -473,6 +473,7 @@ export default function App() {
             coords={coords}
             t={t}
             onClose={() => setShowVenueCRM(false)}
+            onSaved={({ lat, lng }) => setViewCenter({ lat, lng, zoom: 16 })}
           />
         )}
 
