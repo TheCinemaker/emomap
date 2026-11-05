@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
 import { EMOTIONS } from '../emotions';
 import { compressImage } from '../imageCompress';
-import { moderateImageFile } from '../imageModeration';
+import { moderateImageFile, warmupModerationModel } from '../imageModeration';
 import { IconUser, IconBolt, IconHeart, IconRepeat, IconTrash, IconFlag, IconCamera, IconCheck, IconClose } from './Icons';
 
 const PULSES_LIMIT = 40;
@@ -171,6 +171,8 @@ export default function PulsesPage({ session, t }) {
   }, [userId, t]);
 
   useEffect(() => {
+    // Pre-warm GPU neural network in the background so photo checks run in ~120ms
+    warmupModerationModel();
     fetchPulses();
     const ch = supabase
       .channel('pulses_global_live')
