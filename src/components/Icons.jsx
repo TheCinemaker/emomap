@@ -192,6 +192,24 @@ export function IconApple(props) {
   );
 }
 
+export function IconArrowLeft(props) {
+  return (
+    <svg {...strokeBase} {...props}>
+      <path d="M19 12H5" />
+      <path d="M11 18l-6-6 6-6" />
+    </svg>
+  );
+}
+
+export function IconSearch(props) {
+  return (
+    <svg {...strokeBase} {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M21 21l-4.3-4.3" />
+    </svg>
+  );
+}
+
 export function IconPencil(props) {
   return (
     <svg {...strokeBase} {...props}>

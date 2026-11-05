@@ -16,7 +16,7 @@ export function useFriends(userId) {
 
     const { data: rows, error } = await supabase
       .from('friendships')
-      .select('id, requester_id, addressee_id, status, created_at')
+      .select('id, requester_id, addressee_id, status, created_at, responded_at')
       .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`);
 
     if (error) {
@@ -30,7 +30,11 @@ export function useFriends(userId) {
     const out = [];
     for (const row of rows || []) {
       const otherId = row.requester_id === userId ? row.addressee_id : row.requester_id;
-      const entry = { friendshipId: row.id, otherId };
+      // sinceAt: when this became a friendship (falls back to the request's
+      // created_at for older rows from before responded_at existed) — used
+      // to bubble a freshly-accepted friend to the top of the conversation
+      // list even before any messages exist.
+      const entry = { friendshipId: row.id, otherId, sinceAt: row.responded_at || row.created_at };
       if (row.status === 'accepted') accepted.push(entry);
       else if (row.status === 'pending') {
         if (row.addressee_id === userId) inc.push(entry);
@@ -48,12 +52,29 @@ export function useFriends(userId) {
     let moodById = {};
     const friendIds = accepted.map((f) => f.otherId);
     if (friendIds.length) {
-      const { data: moods } = await supabase
+      // is_active, not "most recent ever": a friend's mood should mean
+      // "what they're feeling right now" (one active vote per user, see
+      // supabase_single_active_vote.sql), not whatever they posted days
+      // ago — showing a stale mood as if current would be misleading.
+      let { data: moods, error: moodErr } = await supabase
         .from('emotions')
         .select('user_id, emotion, inserted_at')
         .in('user_id', friendIds)
+        .eq('is_active', true)
         .order('inserted_at', { ascending: false })
         .limit(MOOD_SAMPLE_LIMIT);
+      // is_active doesn't exist until supabase_single_active_vote.sql has
+      // run on this project — fall back rather than erroring the whole
+      // friends list out.
+      if (moodErr?.code === '42703') {
+        ({ data: moods } = await supabase
+          .from('emotions')
+          .select('user_id, emotion, inserted_at')
+          .in('user_id', friendIds)
+          .gte('inserted_at', new Date(Date.now() - 60 * 60 * 1000).toISOString())
+          .order('inserted_at', { ascending: false })
+          .limit(MOOD_SAMPLE_LIMIT));
+      }
       for (const m of moods || []) {
         if (!moodById[m.user_id]) moodById[m.user_id] = m; // first hit per user = most recent (desc order)
       }

@@ -101,6 +101,59 @@ export function useChat(userId, friendId) {
   return { messages, loading, sending, send };
 }
 
+// Per-friend conversation preview (last message + its time + unread count)
+// for the Messenger-style friends list: which conversation to show at the
+// top, and what snippet/badge to show on each row. Pulls the most recent
+// PREVIEW_FETCH_LIMIT messages across ALL of the user's conversations in
+// one query (same "take the most recent N, reduce client-side to one per
+// key" pattern as useFriends' mood lookup), not one query per friend.
+const PREVIEW_FETCH_LIMIT = 500;
+
+export function useConversationPreviews(userId, friendIds) {
+  const [previews, setPreviews] = useState({}); // otherId -> { lastMessage, lastAt, unreadCount }
+  const friendIdsKey = friendIds.join(',');
+
+  const load = useCallback(async () => {
+    if (!userId || !friendIdsKey) { setPreviews({}); return; }
+    const ids = friendIdsKey.split(',');
+    const idSet = new Set(ids);
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select('sender_id, recipient_id, body, created_at, read_at')
+      .or(`sender_id.eq.${userId},recipient_id.eq.${userId}`)
+      .order('created_at', { ascending: false })
+      .limit(PREVIEW_FETCH_LIMIT);
+
+    if (error) { console.error('[Chat] preview load error:', error); return; }
+
+    const map = {};
+    for (const m of data || []) {
+      const otherId = m.sender_id === userId ? m.recipient_id : m.sender_id;
+      if (!idSet.has(otherId)) continue;
+      if (!map[otherId]) {
+        map[otherId] = { lastMessage: m.body, lastAt: m.created_at, unreadCount: 0 };
+      }
+      if (m.recipient_id === userId && !m.read_at) {
+        map[otherId].unreadCount += 1;
+      }
+    }
+    setPreviews(map);
+  }, [userId, friendIdsKey]);
+
+  useEffect(() => {
+    load();
+    if (!userId) return;
+    const channel = supabase
+      .channel(`conv-previews-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, load)
+      .subscribe();
+    return () => supabase.removeChannel(channel);
+  }, [load, userId]);
+
+  return previews;
+}
+
 // Total unread count across all conversations — for a header badge.
 export function useUnreadMessageCount(userId) {
   const [count, setCount] = useState(0);

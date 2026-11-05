@@ -179,6 +179,10 @@ const dict = {
     chat_empty: 'No messages yet — say hi!',
     chat_placeholder: 'Message…',
     chat_send: 'Send',
+    chat_back: 'Back',
+    friends_search_placeholder: 'Search friends or find people…',
+    friends_say_hi: 'Say hi!',
+    friends_online: 'Online',
 
     details_open: 'Details',
     details_title: 'Your details',
@@ -370,6 +374,10 @@ const dict = {
     chat_empty: 'Még nincs üzenet — köszönj rá!',
     chat_placeholder: 'Üzenet…',
     chat_send: 'Küldés',
+    chat_back: 'Vissza',
+    friends_search_placeholder: 'Keresés barátok közt vagy új ember…',
+    friends_say_hi: 'Köszönj rá!',
+    friends_online: 'Elérhető',
 
     details_open: 'Adatok',
     details_title: 'A te adataid',
@@ -561,6 +569,10 @@ const dict = {
     chat_empty: 'Noch keine Nachrichten — sag Hallo!',
     chat_placeholder: 'Nachricht…',
     chat_send: 'Senden',
+    chat_back: 'Zurück',
+    friends_search_placeholder: 'Freunde suchen oder Leute finden…',
+    friends_say_hi: 'Sag Hallo!',
+    friends_online: 'Online',
 
     details_open: 'Details',
     details_title: 'Deine Details',

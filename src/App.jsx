@@ -13,16 +13,16 @@ import { useEmotionalMirror } from './useEmotionalMirror';
 import { useReplay, REPLAY_HOURS } from './useReplay';
 import { useVenues } from './useVenues';
 import { useIncomingRequestCount } from './useFriends';
+import { usePresence } from './usePresence';
 import VenueCRM from './components/VenueCRM';
 import VenueModal from './components/VenueModal';
 import LoadingScreen from './components/LoadingScreen';
 import Auth from './components/Auth';
 import PulsesPage from './components/PulsesPage';
+import FriendsPage from './components/FriendsPage';
 import BottomNav from './components/BottomNav';
 import ShareCard from './components/ShareCard';
 import Profile from './components/Profile';
-import Friends from './components/Friends';
-import Chat from './components/Chat';
 import { useUnreadMessageCount } from './useChat';
 import ProfileDetails from './components/ProfileDetails';
 import FriendDetails from './components/FriendDetails';
@@ -98,9 +98,7 @@ export default function App() {
   const [showVenueCRM, setShowVenueCRM] = useState(false);
   const [viewVenueId, setViewVenueId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
-  const [showFriends, setShowFriends] = useState(false);
-  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses'
-  const [chatWith, setChatWith] = useState(null); // { friendId, friendName } | null
+  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses' | 'friends'
   const [showOwnDetails, setShowOwnDetails] = useState(false);
   const [viewDetailsFor, setViewDetailsFor] = useState(null); // { friendId, friendName } | null
 
@@ -109,6 +107,9 @@ export default function App() {
   const unreadCount = useUnreadMessageCount(userId);
   const incomingRequestCount = useIncomingRequestCount(userId);
   const profileBadgeCount = unreadCount + incomingRequestCount;
+  // Mounted here (not inside FriendsPage) so you stay visible as "online"
+  // to friends for the whole session, not just while that tab is open.
+  const onlineIds = usePresence(userId);
   const { hourlyGrids, loading: replayLoading, load: loadReplay, reset: resetReplay } = useReplay();
   const [showReplay, setShowReplay] = useState(false);
   const [replayHour, setReplayHour] = useState(REPLAY_HOURS - 1);
@@ -310,26 +311,17 @@ export default function App() {
   const handleLogout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
   const handleNavChange = useCallback((tab) => {
-    if (tab === 'map') {
-      setShowFriends(false);
+    if (tab === 'map' || tab === 'pulses' || tab === 'friends') {
       setShowProfile(false);
-      setActiveTab('map');
-    } else if (tab === 'pulses') {
-      setShowFriends(false);
-      setShowProfile(false);
-      setActiveTab('pulses');
-    } else if (tab === 'friends') {
-      setShowProfile(false);
-      setShowFriends((prev) => !prev);
+      setActiveTab(tab);
     } else if (tab === 'profile') {
-      setShowFriends(false);
       setShowProfile((prev) => !prev);
     }
   }, []);
 
   if (!session) return <Auth />;
 
-  const currentNavTab = showFriends ? 'friends' : showProfile ? 'profile' : activeTab;
+  const currentNavTab = showProfile ? 'profile' : activeTab;
 
   const promptText =
     !gpsAllowed ? t('vote_prompt_need_location')
@@ -395,7 +387,7 @@ export default function App() {
           t={t}
           onClose={() => setShowProfile(false)}
           onLogout={handleLogout}
-          onOpenFriends={() => { setShowProfile(false); setShowFriends(true); }}
+          onOpenFriends={() => { setShowProfile(false); setActiveTab('friends'); }}
           onOpenDetails={() => { setShowProfile(false); setShowOwnDetails(true); }}
           onOpenVenueCRM={() => { setShowProfile(false); setShowVenueCRM(true); }}
         />
@@ -403,16 +395,6 @@ export default function App() {
 
       {showOwnDetails && (
         <ProfileDetails userId={userId} t={t} onClose={() => setShowOwnDetails(false)} />
-      )}
-
-      {showFriends && (
-        <Friends
-          userId={userId}
-          t={t}
-          onClose={() => setShowFriends(false)}
-          onOpenChat={(friendId, friendName) => setChatWith({ friendId, friendName })}
-          onOpenDetails={(friendId, friendName) => setViewDetailsFor({ friendId, friendName })}
-        />
       )}
 
       {viewDetailsFor && (
@@ -424,18 +406,17 @@ export default function App() {
         />
       )}
 
-      {chatWith && (
-        <Chat
-          userId={userId}
-          friendId={chatWith.friendId}
-          friendName={chatWith.friendName}
-          t={t}
-          onClose={() => setChatWith(null)}
-        />
-      )}
-
       {activeTab === 'pulses' && (
         <PulsesPage session={session} t={t} />
+      )}
+
+      {activeTab === 'friends' && (
+        <FriendsPage
+          userId={userId}
+          t={t}
+          onlineIds={onlineIds}
+          onOpenDetails={(friendId, friendName) => setViewDetailsFor({ friendId, friendName })}
+        />
       )}
 
       <main className="app-map-area" style={{ display: activeTab === 'map' ? undefined : 'none' }}>

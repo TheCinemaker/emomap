@@ -99,88 +99,32 @@ export async function onRequestPost(context) {
       bytes[i] = binaryStr.charCodeAt(i);
     }
 
+    let lastError = null;
     // 1. Primary: Cloudflare Workers AI binding (`env.AI`)
     if (env?.AI) {
       try {
-        // Try Llama 3.2 11B Vision first
-        const llamaRes = await env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: MODERATION_PROMPT },
-                { type: 'image', image: Array.from(bytes) },
-              ],
-            },
-          ],
-          max_tokens: 90,
-          temperature: 0.0,
+        // Try LLaVA 1.5 7B directly — robust array or base64 input
+        const llavaRes = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
+          image: Array.from(bytes),
+          prompt: MODERATION_PROMPT,
+          max_tokens: 60,
         });
-
-        const textOut = llamaRes?.response || llamaRes?.result?.response || JSON.stringify(llamaRes);
+        const textOut = llavaRes?.description || llavaRes?.response || JSON.stringify(llavaRes);
         const verdict = parseVerdictJson(textOut);
         if (verdict) {
           return new Response(
-            JSON.stringify({ ok: true, engine: 'cf-llama-3.2-vision', ...verdict }),
+            JSON.stringify({ ok: true, engine: 'cf-llava-1.5-7b', ...verdict }),
             { status: 200, headers: { 'Content-Type': 'application/json' } }
           );
         }
-      } catch (llamaErr) {
-        // Fallback to LLaVA 1.5 7B on Workers AI (doesn't require prior license agreement)
-        try {
-          const llavaRes = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
-            image: Array.from(bytes),
-            prompt: MODERATION_PROMPT,
-            max_tokens: 90,
-            temperature: 0.0,
-          });
-          const textOut = llavaRes?.description || llavaRes?.response || JSON.stringify(llavaRes);
-          const verdict = parseVerdictJson(textOut);
-          if (verdict) {
-            return new Response(
-              JSON.stringify({ ok: true, engine: 'cf-llava-1.5-7b', ...verdict }),
-              { status: 200, headers: { 'Content-Type': 'application/json' } }
-            );
-          }
-        } catch (llavaErr) {
-          console.warn('[CF AI Moderation] LLaVA error:', llavaErr?.message);
-        }
-      }
-    }
-
-    // 2. Secondary: Optional free Gemini Flash Vision key (`env.GEMINI_API_KEY`)
-    if (env?.GEMINI_API_KEY) {
-      const gemUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${env.GEMINI_API_KEY}`;
-      const gemRes = await fetch(gemUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: MODERATION_PROMPT },
-                { inline_data: { mime_type: 'image/jpeg', data: cleanB64 } },
-              ],
-            },
-          ],
-          generationConfig: { temperature: 0.0, maxOutputTokens: 90 },
-        }),
-      });
-      if (gemRes.ok) {
-        const gemJson = await gemRes.json();
-        const textOut = gemJson?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const verdict = parseVerdictJson(textOut);
-        if (verdict) {
-          return new Response(
-            JSON.stringify({ ok: true, engine: 'gemini-flash-vision', ...verdict }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
+        lastError = 'llava_unparseable: ' + textOut;
+      } catch (llavaErr) {
+        lastError = 'llava_err: ' + llavaErr?.message;
       }
     }
 
     return new Response(
-      JSON.stringify({ ok: false, reason: 'no_cloud_binding', envKeys: Object.keys(env || {}) }),
+      JSON.stringify({ ok: false, reason: 'ai_failed', error: lastError, envKeys: Object.keys(env || {}) }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err) {
