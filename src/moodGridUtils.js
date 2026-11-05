@@ -19,23 +19,32 @@ export const EMOTION_RGB = {
 // rather than degrading every device for everyone simultaneously voting.
 export const MAX_RENDERED_CELLS = 400;
 
+// A single live vote must already read as clearly visible — "I voted and
+// nothing happened" is the worst first impression this app can give,
+// especially with few users around (exactly the case most of the time at
+// launch). Old formula (total/20) gave a lone vote 5% intensity — invisible
+// in practice. Floor is now 0.45; it still climbs toward 1 as a cell fills
+// up with more simultaneous (distinct-user) votes.
+export function cellIntensity(total) {
+  return Math.min(1, 0.45 + 0.55 * Math.min(1, (total - 1) / 9));
+}
+
 export function calculateCellSize(zoomLevel) {
   const baseSizeDeg = 0.01;
   const size = baseSizeDeg * Math.pow(2, 10 - zoomLevel);
   return Math.max(0.005, Math.min(10, size));
 }
 
-// k-anonymity floor, scaled to how much real-world area a cell covers.
-// A continent-sized cell (zoomed-out world view) carries no re-identification
-// risk even from a single point — that view HAS to look alive with sparse,
-// early data. A neighborhood-sized cell (zoomed in) is where "someone
-// pinned 'stressed' outside this address" becomes plausible, so it needs
-// a real sample-size floor.
-export function minSampleForCellSize(cellSizeDeg) {
-  const approxKm = cellSizeDeg * 111; // rough degrees→km, good enough for a threshold
-  if (approxKm >= 50) return 1;
-  if (approxKm >= 5) return 2;
-  return 3;
+// Formerly a k-anonymity floor requiring >=3 votes in a small cell before
+// rendering anything — removed per explicit user direction (2026-11-05):
+// each user now has exactly one live vote (see cast_vote in
+// supabase_single_active_vote.sql) and stays jittered ~10m with no identity
+// ever attached to a marker, so the floor's only remaining effect was
+// hiding a lone early user's own vote from themselves. Kept as a no-op
+// function (rather than deleted) so both call sites below don't need their
+// own "is this still a thing" comment.
+export function minSampleForCellSize() {
+  return 1;
 }
 
 /**
@@ -87,7 +96,7 @@ export function buildGridCells(rows, cellSizeDeg) {
       lng,
       color: `rgb(${Math.round(rSum)}, ${Math.round(gSum)}, ${Math.round(bSum)})`,
       total,
-      intensity: Math.min(1, total / 20),
+      intensity: cellIntensity(total),
       size: cellSizeDeg,
       key,
     });

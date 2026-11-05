@@ -1,7 +1,7 @@
 // src/useMoodGrid.js
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from './supabaseClient';
-import { calculateCellSize, buildGridCells, EMOTION_RGB, MAX_RENDERED_CELLS } from './moodGridUtils';
+import { calculateCellSize, buildGridCells, EMOTION_RGB, MAX_RENDERED_CELLS, cellIntensity } from './moodGridUtils';
 
 // Turns the RPC's one-row-per-(cell,emotion) result into the same
 // {lat,lng,color,total,intensity,size,key} shape buildGridCells produces for
@@ -34,7 +34,7 @@ function rowsToCells(rows, cellSizeDeg) {
       lng: cell.lng,
       color: `rgb(${Math.round(rSum)}, ${Math.round(gSum)}, ${Math.round(bSum)})`,
       total: cell.total,
-      intensity: Math.min(1, cell.total / 20),
+      intensity: cellIntensity(cell.total),
       size: cellSizeDeg,
       key,
     });

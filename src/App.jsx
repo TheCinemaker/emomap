@@ -252,9 +252,24 @@ export default function App() {
     setTimeout(() => setLastVotedEmotion(null), 1000);
 
     try {
-      const { error } = await supabase.from('emotions').insert(event);
+      // cast_vote (not a raw insert): atomically deactivates whatever vote
+      // this user had showing and inserts the new one, so only ever one of
+      // their pins is live on the map at a time — see
+      // supabase_single_active_vote.sql. Falls back to a plain insert if
+      // that migration hasn't been run on this Supabase project yet (error
+      // 42883 = function does not exist), so a deploy never breaks voting
+      // entirely just because the SQL side landed a moment later.
+      let { error } = await supabase.rpc('cast_vote', {
+        p_emotion: emotionId,
+        p_lat: lat,
+        p_lng: lng,
+        p_session_id: SESSION_ID,
+      });
+      if (error?.code === '42883' || error?.code === 'PGRST202') {
+        ({ error } = await supabase.from('emotions').insert(event));
+      }
       if (error) {
-        console.error('Supabase insert error:', error);
+        console.error('Supabase cast_vote error:', error);
         setLastVoteAt(null);
       } else {
         triggerMirror(coords, emotionId);

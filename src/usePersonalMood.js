@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from './supabaseClient';
 import { EMOTIONS } from './emotions';
+import { cellIntensity } from './moodGridUtils';
 
 // emotion -> color map
 const COLOR_MAP = EMOTIONS.reduce((acc, e) => {
@@ -52,16 +53,33 @@ export function usePersonalMood(coords, sessionId) {
       // RIGHT NOW, same reasoning/window as useMoodGrid and the mood-grid RPC.
       const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('emotions')
         .select('emotion')
         .eq('session_id', sessionId)
+        .eq('is_active', true)
         .gte('inserted_at', since)
         .gte('lat', south)
         .lte('lat', north)
         .gte('lng', west)
         .lte('lng', east)
         .limit(1000);
+
+      // is_active doesn't exist until supabase_single_active_vote.sql has
+      // run on this project — fall back to the plain time-window query
+      // rather than erroring out the whole personal-aura feature.
+      if (error?.code === '42703') {
+        ({ data, error } = await supabase
+          .from('emotions')
+          .select('emotion')
+          .eq('session_id', sessionId)
+          .gte('inserted_at', since)
+          .gte('lat', south)
+          .lte('lat', north)
+          .gte('lng', west)
+          .lte('lng', east)
+          .limit(1000));
+      }
 
       if (cancelled) return;
 
@@ -109,8 +127,9 @@ export function usePersonalMood(coords, sessionId) {
       const b = Math.round(sumB / total);
       const color = `rgb(${r}, ${g}, ${b})`;
 
-      // intenzitás 0..1
-      const intensity = Math.min(1, total / 20); // gyorsabban erősödjön
+      // Same floor as the mood-grid cells: a lone vote must still read as
+      // clearly visible, not a 5%-opacity ghost.
+      const intensity = cellIntensity(total);
 
       setMood({
         color,
