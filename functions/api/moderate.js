@@ -180,7 +180,7 @@ export async function onRequestPost(context) {
     }
 
     return new Response(
-      JSON.stringify({ ok: false, reason: 'no_cloud_binding' }),
+      JSON.stringify({ ok: false, reason: 'no_cloud_binding', envKeys: Object.keys(env || {}) }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (err) {
