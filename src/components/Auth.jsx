@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useLang, LANGUAGES } from '../i18n';
-import { IconGlobe, IconCheck, IconClose } from './Icons';
+import { IconGlobe, IconCheck, IconClose, IconGoogle, IconApple } from './Icons';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
@@ -111,6 +111,22 @@ export default function Auth() {
     if (signInError) throw signInError;
   };
 
+  // Google/Apple: no username step at all, by design — the new-user DB
+  // trigger (see supabase_oauth_profiles.sql) auto-generates one from the
+  // provider's name/email so sign-in is a single tap, like Facebook login.
+  // This is a full-page redirect (out to Google/Apple and back), not a
+  // popup — there's nothing to await here beyond catching an immediate
+  // config error (e.g. the provider not enabled yet in Supabase).
+  const handleOAuth = async (provider) => {
+    setError(null);
+    setInfo(null);
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
+    });
+    if (oauthError) setError(friendlyError(oauthError));
+  };
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -159,6 +175,24 @@ export default function Auth() {
 
         {error && <div className="auth-alert auth-alert-error">{error}</div>}
         {info && <div className="auth-alert auth-alert-info">{info}</div>}
+
+        <div className="auth-oauth-row">
+          <button type="button" className="auth-oauth-btn is-google" onClick={() => handleOAuth('google')}>
+            <IconGoogle width={18} height={18} /> {t('auth_continue_google')}
+          </button>
+          <button type="button" className="auth-oauth-btn is-apple" onClick={() => handleOAuth('apple')}>
+            <IconApple width={17} height={17} /> {t('auth_continue_apple')}
+          </button>
+        </div>
+
+        <p className="auth-legal-note">
+          {t('auth_legal_prefix')}{' '}
+          <a href={lang === 'hu' ? '/legal/aszf.html' : '/legal/terms.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_terms')}</a>
+          {' '}{t('auth_legal_and')}{' '}
+          <a href={lang === 'hu' ? '/legal/adatkezeles.html' : '/legal/privacy.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_privacy')}</a>.
+        </p>
+
+        <div className="auth-divider"><span>{t('auth_or_username')}</span></div>
 
         <form onSubmit={handleAuth} className="auth-form">
           {/* Email — only on signup */}
@@ -236,15 +270,6 @@ export default function Auth() {
             {loading ? t('auth_submit_loading') : (isSignUp ? t('auth_submit_signup') : t('auth_submit_signin'))}
           </button>
         </form>
-
-        {isSignUp && (
-          <p className="auth-legal-note">
-            {t('auth_legal_prefix')}{' '}
-            <a href={lang === 'hu' ? '/legal/aszf.html' : '/legal/terms.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_terms')}</a>
-            {' '}{t('auth_legal_and')}{' '}
-            <a href={lang === 'hu' ? '/legal/adatkezeles.html' : '/legal/privacy.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_privacy')}</a>.
-          </p>
-        )}
 
         <div className="auth-divider"><span>{t('auth_or')}</span></div>
 

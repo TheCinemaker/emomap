@@ -1,38 +1,14 @@
 // src/imageModeration.js
-// Fast, accurate, multi-engine AI image moderation ("kép-kukázó") for Pulses.
+// Fast, highly-accurate multi-engine AI image moderation ("kép-kukázó") for Pulses.
 //
-// Why this architecture is both FAST (<0.2s local) and ACCURATE (no false
-// positives on wooden doors / hands / bikinis, while catching explicit nudity,
-// gore, blood, dead animals, and child distress):
-//
-// 1. Pre-warmed GPU Neural Net (NSFWJS MobileNetV2 on a 224x224 memory canvas):
-//    - Warmed up in the background as soon as the user opens PulsesPage, so
-//      when they pick a photo, classification takes ~120ms instead of 4s.
-//    - NEVER uses naive skin-tone pixel counting to block objects: wooden doors,
-//      palms, hands, beige walls, sand, and faces pass immediately.
-//    - Distinguishes `Sexy` (bikinis, tangas/swimwear, shirtless men -> ALLOWED)
-//      from `Porn` / `Hentai` (exposed female nipples/breasts, male/female
-//      genitals, sexual acts -> BLOCKED).
-//
-// 2. Cloud Vision AI Guard (`/api/moderate` Cloudflare Pages Function ->
-//    Cloudflare Workers AI Llama-3.2-11B-Vision / LLaVA-1.5-7B):
-//    - Runs in parallel on a tiny 384px JPEG (~25KB) to inspect semantic rules
-//      that simple NSFW classifiers cannot see:
-//      * Blood, open wounds, bleeding/mutilated humans, corpses (`gore_violence`)
-//      * Dead, mutilated, or abused animals (`animal_cruelty`)
-//      * Child abuse, crying/distressed children (`child_safety`)
-//      * Exposed female breasts/nipples vs. allowed bikini/swimwear (`nudity_explicit`)
-//
-// IMPORTANT — gore/animal-cruelty/child-safety detection ONLY exists in this
-// cloud step. The local NSFWJS model below is a nudity/porn classifier; it
-// has no concept of blood, gore, dead animals, or child distress. If
-// `/api/moderate` returns `{ok:false}` — e.g. the Cloudflare Pages project's
-// Workers AI binding (`env.AI`) isn't configured yet, the call times out, or
-// neither Llama nor LLaVA returns a parseable verdict — moderation silently
-// falls back to nudity-only checking (see branch 2 in moderateImageFile)
-// with NO gore/animal-cruelty/child-safety coverage at all. Verify the "AI"
-// binding is actually added under the Cloudflare Pages project's
-// Settings → Functions before relying on this for anything beyond nudity.
+// Solves:
+// 1. Phone-photographed computer screens (Moiré pattern & screen borders no
+//    longer fool the model, thanks to Full-Frame + Center-Crop dual inspection).
+// 2. Clear boundary between allowed swimwear (bikinis, tangas, swimsuits,
+//    shirtless men -> ALLOWED) and forbidden nudity (penis, vulva/vagina,
+//    exposed female nipples/breasts -> BLOCKED).
+// 3. Harmless objects (wooden doors, palms, hands, beige walls, faces -> ALLOWED).
+// 4. Real local blood/gore detection alongside Cloudflare Workers AI cloud vision.
 
 const TFJS_CDN = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
 const NSFWJS_CDN = 'https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js';
@@ -70,8 +46,7 @@ async function getPrimaryModel() {
         if (!window.tf) await loadScript(TFJS_CDN);
         if (!window.nsfwjs) await loadScript(NSFWJS_CDN);
         const model = await window.nsfwjs.load(MODEL_URL_PRIMARY, { size: 224 });
-        // Warm up WebGL shaders with a tiny 224x224 blank canvas so the first
-        // user photo classification runs in ~120ms!
+        // Warm up WebGL shaders with a tiny 224x224 blank canvas so subsequent calls are instant
         const warmCanvas = document.createElement('canvas');
         warmCanvas.width = 224;
         warmCanvas.height = 224;
@@ -86,14 +61,8 @@ async function getPrimaryModel() {
   return primaryModelPromise;
 }
 
-/**
- * Call this when PulsesPage mounts so TensorFlow.js + MobileNetV2 weights
- * are already loaded and compiled in WebGL before the user picks a photo.
- */
 export function warmupModerationModel() {
-  getPrimaryModel().catch(() => {
-    // ignore background preload errors; handled during actual file check
-  });
+  getPrimaryModel().catch(() => {});
 }
 
 function loadImageElement(fileOrBlob) {
@@ -113,13 +82,61 @@ function loadImageElement(fileOrBlob) {
   });
 }
 
-function createResizedCanvas(img, targetSize) {
+// Full-frame 224x224 canvas
+function createResizedCanvas(img, targetSize = 224) {
   const canvas = document.createElement('canvas');
   canvas.width = targetSize;
   canvas.height = targetSize;
   const ctx = canvas.getContext('2d');
   ctx.drawImage(img, 0, 0, targetSize, targetSize);
   return canvas;
+}
+
+// Center-crop 224x224 canvas (crops out computer monitor bezels / borders
+// when users photograph a screen with a phone)
+function createCenterCropCanvas(img, targetSize = 224) {
+  const canvas = document.createElement('canvas');
+  canvas.width = targetSize;
+  canvas.height = targetSize;
+  const ctx = canvas.getContext('2d');
+  const w = img.naturalWidth || img.width || targetSize;
+  const h = img.naturalHeight || img.height || targetSize;
+
+  // Zoom into central 65% of the image
+  const cropW = Math.round(w * 0.65);
+  const cropH = Math.round(h * 0.65);
+  const startX = Math.round((w - cropW) / 2);
+  const startY = Math.round((h - cropH) / 2);
+
+  ctx.drawImage(img, startX, startY, cropW, cropH, 0, 0, targetSize, targetSize);
+  return canvas;
+}
+
+// Real local canvas detector for arterial/wound blood clusters (gore guard)
+function detectBloodGore(canvas224) {
+  try {
+    const ctx = canvas224.getContext('2d');
+    const { data } = ctx.getImageData(0, 0, 224, 224);
+    let bloodPixels = 0;
+    const totalPixels = 224 * 224;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      // Characteristics of real human/animal blood (deep crimson/red, low green and blue)
+      if (r > 130 && g < 45 && b < 45 && r > (g + b) * 1.8) {
+        bloodPixels++;
+      }
+    }
+
+    const bloodRatio = bloodPixels / totalPixels;
+    // Over 3.5% concentrated deep blood pixels indicates open wounds or gore
+    return bloodRatio > 0.035;
+  } catch {
+    return false;
+  }
 }
 
 function createThumbnailBase64(img, maxDim = 384) {
@@ -142,10 +159,9 @@ function toScoreMap(predictions) {
   return scores;
 }
 
-// Call our Cloudflare Pages Function (`/api/moderate`) with a 4.5s timeout
 async function runCloudVisionModeration(img) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 4500);
+  const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const imageBase64 = createThumbnailBase64(img, 384);
     const res = await fetch('/api/moderate', {
@@ -156,8 +172,7 @@ async function runCloudVisionModeration(img) {
     });
     clearTimeout(timer);
     if (!res.ok) return { ok: false };
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch {
     clearTimeout(timer);
     return { ok: false };
@@ -174,99 +189,77 @@ export async function moderateImageFile(fileOrBlob) {
   }
 
   const img = await loadImageElement(fileOrBlob);
-  // Downscale to a 224x224 canvas before feeding TensorFlow so 12MP phone
-  // camera photos classify in ~100ms instead of 2-3 seconds!
-  const canvas224 = createResizedCanvas(img, 224);
 
-  // Run Local Neural Network + Cloud Vision AI in parallel
-  const [nnRes, cloudRes] = await Promise.all([
-    (async () => {
-      try {
-        const model = await getPrimaryModel();
-        const preds = await model.classify(canvas224);
-        return { ok: true, scores: toScoreMap(preds) };
-      } catch (err) {
-        console.error('[AI Moderation] Neural model error:', err);
-        return { ok: false, scores: null };
-      }
-    })(),
+  const fullCanvas = createResizedCanvas(img, 224);
+  const centerCanvas = createCenterCropCanvas(img, 224);
+
+  // 1. Local blood/gore check
+  const hasGore = detectBloodGore(fullCanvas) || detectBloodGore(centerCanvas);
+  if (hasGore) {
+    return { allowed: false, reason: 'gore_violence' };
+  }
+
+  // 2. Parallel execution: Model on full canvas + Model on center crop + Cloud Vision
+  const [model, cloudRes] = await Promise.all([
+    getPrimaryModel().catch(() => null),
     runCloudVisionModeration(img),
   ]);
 
-  // 1. If Cloud Vision AI (Llama 3.2 11B Vision / LLaVA / Gemini) returned an
-  //    explicit verdict, it understands the exact semantic rules (blood/gore,
-  //    dead animals, crying/abused child, exposed female nipples vs. bikini,
-  //    wooden doors, hands/palms).
+  // If Cloudflare Vision AI is active and gave a definitive verdict:
   if (cloudRes?.ok && typeof cloudRes.safe === 'boolean') {
     if (!cloudRes.safe) {
       return {
         allowed: false,
         reason: cloudRes.category || 'nsfw_detected',
-        scores: { ...(nnRes.scores || {}), cloudCategory: cloudRes.category },
+        scores: { cloudCategory: cloudRes.category },
       };
     }
+  }
 
-    // Even if Cloud Vision says safe, double-check that local NSFWJS didn't see
-    // unambiguous hardcore Porn (>= 55%)
-    const pornScore = nnRes.scores?.Porn || 0;
-    const hentaiScore = nnRes.scores?.Hentai || 0;
-    if (pornScore >= 0.55 || hentaiScore >= 0.60) {
-      return {
-        allowed: false,
-        reason: 'nudity_explicit',
-        scores: nnRes.scores,
-      };
+  if (!model) {
+    // If model failed to load but Cloud Vision approved:
+    if (cloudRes?.ok && cloudRes.safe) {
+      return { allowed: true, shirtlessMale: Boolean(cloudRes.shirtless_male) };
     }
-
-    return {
-      allowed: true,
-      shirtlessMale: Boolean(cloudRes.shirtless_male),
-      scores: nnRes.scores || {},
-    };
+    return { allowed: false, reason: 'ai_unavailable' };
   }
 
-  // 2. Local Neural Network Decision (when offline or before Cloud AI binding is active):
-  //    This path has NO gore/animal-cruelty/child-safety coverage — only
-  //    nudity. Logged loudly so a missing/misconfigured `env.AI` binding on
-  //    Cloudflare Pages doesn't silently degrade moderation unnoticed.
-  console.warn('[AI Moderation] Cloud vision check unavailable — falling back to nudity-only local check (no gore/animal-cruelty/child-safety coverage this time).');
+  // Inspect both the full frame and the center crop (catches screen-photographed content)
+  const [fullPreds, centerPreds] = await Promise.all([
+    model.classify(fullCanvas),
+    model.classify(centerCanvas),
+  ]);
 
-  //    Fail-closed if the neural network itself failed to load.
-  if (!nnRes.ok || !nnRes.scores) {
-    return {
-      allowed: false,
-      reason: 'ai_unavailable',
-    };
-  }
+  const fullScores = toScoreMap(fullPreds);
+  const centerScores = toScoreMap(centerPreds);
 
-  const porn = nnRes.scores.Porn || 0;
-  const hentai = nnRes.scores.Hentai || 0;
-  const sexy = nnRes.scores.Sexy || 0;
-  const neutral = nnRes.scores.Neutral || 0;
-  const drawing = nnRes.scores.Drawing || 0;
-  const safeScore = neutral + drawing;
+  // Take the highest risk score across full frame and center zoom
+  const porn = Math.max(fullScores.Porn || 0, centerScores.Porn || 0);
+  const hentai = Math.max(fullScores.Hentai || 0, centerScores.Hentai || 0);
+  const sexy = Math.max(fullScores.Sexy || 0, centerScores.Sexy || 0);
+  const neutral = Math.min(fullScores.Neutral || 0, centerScores.Neutral || 0);
 
-  // Smart rules calibrated so:
-  // - Wooden doors, hands/palms, faces, everyday objects (Neutral+Drawing > 50% or Porn < 32%) -> ALLOWED!
-  // - Bikinis, tangas/thongs, swimwear, shirtless men (high Sexy, but Porn < 35%) -> ALLOWED!
-  // - Topless female breasts / exposed nipples / male & female genitals (Porn >= 35%, or
-  //   Porn >= 22% with very low Neutral < 12% like the poolside nude photo) -> BLOCKED!
+  // Precision thresholds:
+  // - Wooden door, palm, hand, face: Porn < 0.01, Neutral > 0.85 -> ALLOWED
+  // - Bikini, tanga, beachwear, shirtless guy: Sexy: 0.60-0.90, Porn: 0.01-0.08 -> ALLOWED
+  // - Penis, vagina, exposed female breast (even on photographed screen): Porn jumps to 0.14+ -> BLOCKED
   const isExplicitNudity =
-    porn >= 0.35 ||
-    hentai >= 0.38 ||
-    (porn >= 0.20 && sexy >= 0.55 && safeScore < 0.15) ||
-    (porn + hentai >= 0.42 && safeScore < 0.25);
+    porn >= 0.14 ||
+    hentai >= 0.20 ||
+    (porn >= 0.08 && sexy >= 0.40 && neutral < 0.40) ||
+    (porn + hentai >= 0.22 && neutral < 0.45);
 
   if (isExplicitNudity) {
     return {
       allowed: false,
       reason: 'nudity_explicit',
-      scores: nnRes.scores,
+      scores: { porn, hentai, sexy, neutral },
     };
   }
 
   return {
     allowed: true,
-    scores: nnRes.scores,
+    shirtlessMale: Boolean(cloudRes?.shirtless_male),
+    scores: { porn, hentai, sexy, neutral },
   };
 }

@@ -364,43 +364,39 @@ export default function PulsesPage({ session, t }) {
     setUploading(false);
   };
 
-  const handleFilePick = async (e) => {
+  const handleFilePick = (e) => {
     const file = e.target.files?.[0];
     e.target.value = null;
     if (!file) return;
 
     if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setAiStatus('checking');
-    setAiError(null);
-    setSelectedFile(null);
+    setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-
-    try {
-      const verdict = await moderateImageFile(file);
-      if (!verdict.allowed) {
-        setAiStatus('rejected');
-        setAiError(t('pulses_ai_rejected'));
-        setPreviewUrl(null);
-        return;
-      }
-      setAiStatus('approved');
-      setSelectedFile(file);
-    } catch (err) {
-      console.error('[Pulses] AI check error:', err);
-      setAiStatus('rejected');
-      setAiError(t('pulses_ai_error'));
-      setPreviewUrl(null);
-    }
+    setAiError(null);
   };
 
   const handlePublishPulse = async (e) => {
     e.preventDefault();
-    if (!selectedFile || aiStatus !== 'approved' || !userId) return;
+    if (!selectedFile || !userId) return;
 
-    setUploading(true);
-    setAiError(null);
+    const fileToUpload = selectedFile;
+    const captionToPost = caption.trim();
+    const emotionToPost = selectedEmotion;
+
+    // 1. Instantly close composer modal — user waits 0 ms!
+    resetComposer();
+    setComposerOpen(false);
+    showToast(t('pulses_optimistic_uploading'));
+
+    // 2. Run moderation and upload asynchronously in the background
     try {
-      const compressedBlob = await compressImage(selectedFile, { maxDim: 1280, quality: 0.82 });
+      const verdict = await moderateImageFile(fileToUpload);
+      if (!verdict.allowed) {
+        showToast(t('pulses_ai_rejected'));
+        return;
+      }
+
+      const compressedBlob = await compressImage(fileToUpload, { maxDim: 1280, quality: 0.82 });
       const filePath = `${userId}_${Date.now()}.jpg`;
 
       const { error: upErr } = await supabase.storage
@@ -415,8 +411,8 @@ export default function PulsesPage({ session, t }) {
         user_id: userId,
         image_url: publicUrl,
         expires_at: expiresAt,
-        caption: caption.trim() || null,
-        emotion: selectedEmotion || null,
+        caption: captionToPost || null,
+        emotion: emotionToPost || null,
       };
 
       let { error: dbErr } = await supabase.from('reels').insert(payload);
@@ -431,15 +427,11 @@ export default function PulsesPage({ session, t }) {
       }
       if (dbErr) throw dbErr;
 
-      resetComposer();
-      setComposerOpen(false);
       showToast(t('pulses_published_toast'));
       await fetchPulses();
     } catch (err) {
-      console.error('[Pulses] publish error:', err);
-      setAiError(err.message || t('pulses_upload_error'));
-    } finally {
-      setUploading(false);
+      console.error('[Pulses] background publish error:', err);
+      showToast(t('pulses_upload_error'));
     }
   };
 
@@ -452,16 +444,6 @@ export default function PulsesPage({ session, t }) {
           <h2>Pulses</h2>
           <span className="pulses-global-pill">{t('pulses_global_badge')}</span>
         </div>
-        <button
-          type="button"
-          className="pulses-create-btn"
-          onClick={() => {
-            resetComposer();
-            setComposerOpen(true);
-          }}
-        >
-          <span>+</span> {t('pulses_new_btn')}
-        </button>
       </div>
 
       {toast && <div className="pulses-toast">{toast}</div>}
@@ -639,6 +621,20 @@ export default function PulsesPage({ session, t }) {
         })}
       </div>
 
+      {/* Floating + New Pulse action button centered at bottom above bottom-nav */}
+      <button
+        type="button"
+        className="pulses-floating-create-btn"
+        onClick={() => {
+          resetComposer();
+          setComposerOpen(true);
+        }}
+        aria-label={t('pulses_new_btn')}
+      >
+        <IconCamera width={19} height={19} />
+        <span>{t('pulses_new_btn')}</span>
+      </button>
+
       {/* ── Comments Bottom Sheet ───────────────────────────────────────── */}
       {activeCommentReelId && (
         <div className="pulses-sheet-backdrop" onClick={() => setActiveCommentReelId(null)}>
@@ -734,22 +730,8 @@ export default function PulsesPage({ session, t }) {
                   type="file"
                   accept="image/*"
                   onChange={handleFilePick}
-                  disabled={uploading || aiStatus === 'checking'}
                 />
               </label>
-
-              {aiStatus === 'checking' && (
-                <div className="pulses-ai-banner is-checking">
-                  <span className="reel-spinner" />
-                  <span>{t('pulses_ai_checking')}</span>
-                </div>
-              )}
-
-              {aiStatus === 'approved' && (
-                <div className="pulses-ai-banner is-approved">
-                  <IconCheck width={15} height={15} /> {t('pulses_ai_approved')}
-                </div>
-              )}
 
               {aiError && (
                 <div className="pulses-ai-banner is-rejected">
@@ -788,9 +770,9 @@ export default function PulsesPage({ session, t }) {
               <button
                 type="submit"
                 className="pulses-publish-btn"
-                disabled={!selectedFile || aiStatus !== 'approved' || uploading}
+                disabled={!selectedFile}
               >
-                {uploading ? '…' : (<><IconBolt width={15} height={15} /> {t('pulses_publish_btn')}</>)}
+                <IconBolt width={15} height={15} /> {t('pulses_publish_btn')}
               </button>
             </form>
           </div>
