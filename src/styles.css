@@ -1462,9 +1462,17 @@ button { font-family: inherit; }
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: radial-gradient(circle, var(--cell-color) 0%, transparent 70%);
-  filter: blur(30px);
-  animation: pulse-aura 4s infinite ease-in-out;
+  /* Solid-colored core out to 45% (was fading from the very center) so a
+     cell reads as a glowing light, not a flat, pale, half-transparent
+     patch — direct response to "nincs fénye ha boldog valaki" (it has no
+     light when someone's happy). */
+  background: radial-gradient(circle, var(--cell-color) 0%, var(--cell-color) 45%, transparent 75%);
+  /* --cell-blur is set per-marker in MapView.jsx, proportional to its
+     pixel size — a fixed blur (the old 30px) drowned small, zoomed-in
+     individual-person dots into an oversized smudge, which is exactly the
+     "pulzálás túl nagynak érzem belezoomolva" complaint. */
+  filter: blur(var(--cell-blur, 20px)) brightness(1);
+  animation: pulse-aura 2.8s infinite ease-in-out;
   /* Was mix-blend-mode: screen, tuned for the old dark basemap — screen
      lightens everything it touches, so over a light map it washes the
      color out to near-invisible instead of a readable tinted patch.
@@ -1474,8 +1482,8 @@ button { font-family: inherit; }
 }
 
 @keyframes pulse-aura {
-  0%, 100% { transform: scale(0.85); opacity: 0.6; }
-  50%      { transform: scale(1.05); opacity: 1; }
+  0%, 100% { transform: scale(0.82); opacity: 0.6; filter: blur(var(--cell-blur, 20px)) brightness(0.92); }
+  50%      { transform: scale(1.14); opacity: 1;   filter: blur(var(--cell-blur, 20px)) brightness(1.35); }
 }
 
 .user-marker {

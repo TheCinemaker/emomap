@@ -35,18 +35,31 @@ export function cellIntensity(total) {
   return Math.min(1, 0.45 + 0.55 * Math.min(1, (total - 1) / 9));
 }
 
+// Calibrated directly against the user's own two reference scenarios
+// (2026-11-05): "open a big city like Berlin → one big pulse. Zoom in →
+// more and more distinct pulses appear. Zoom into a single bar → tiny
+// individual dots." That requires cell size to shrink FASTER than the
+// viewport itself does (the viewport's degree-width exactly halves each
+// zoom level) — a plain `base * 2^(ref - zoom)` curve shrinks at the SAME
+// rate as the viewport, which keeps the number of cells visible on screen
+// constant at every zoom instead of revealing more of them as you zoom in.
+// Using two calibration points and log-linear interpolation between (and
+// beyond) them gets both ends right at once: z10 ≈ a whole big city
+// (~37km, reads as one or few blobs), z18 ≈ individual-person resolution
+// (~12m, a single bar/stage separates into distinct dots).
+const CAL_ZOOM_CITY = 10;
+const CAL_SIZE_CITY_DEG = 0.33;   // ~37km
+const CAL_ZOOM_BAR = 18;
+const CAL_SIZE_BAR_DEG = 0.00011; // ~12m
+
 export function calculateCellSize(zoomLevel) {
-  const baseSizeDeg = 0.01;
-  const size = baseSizeDeg * Math.pow(2, 10 - zoomLevel);
-  // Floor used to sit at 0.005deg (~550m), which never shrank further no
-  // matter how far in you zoomed — at a festival/stadium/café-terrace zoom
-  // level that meant everyone within ~550m got fused into ONE big blended
-  // aura instead of appearing as separate people. Lowered to ~0.0001deg
-  // (~11m, roughly the GPS jitter radius itself — no point resolving finer
-  // than the jitter noise floor). A tight zoom also means a tiny physical
-  // viewport, so cell COUNT stays bounded even as each cell shrinks;
-  // MAX_RENDERED_CELLS is the actual safety net against a 10,000-person
-  // event, not this floor.
+  const t = (zoomLevel - CAL_ZOOM_CITY) / (CAL_ZOOM_BAR - CAL_ZOOM_CITY);
+  const logSize = Math.log(CAL_SIZE_CITY_DEG) + t * (Math.log(CAL_SIZE_BAR_DEG) - Math.log(CAL_SIZE_CITY_DEG));
+  const size = Math.exp(logSize);
+  // Lower floor ~0.0001deg (~11m, the GPS jitter radius — no point
+  // resolving finer than the jitter noise itself). MAX_RENDERED_CELLS is
+  // the actual safety net against cell-count blowup at a 10,000-person
+  // event, not this floor, so it's safe to let cells get this small.
   return Math.max(0.0001, Math.min(10, size));
 }
 

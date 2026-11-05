@@ -298,13 +298,23 @@ export function MapView({
       // Size the glow to the cell's ACTUAL real-world footprint (cell.size is in
       // degrees), not a hardcoded 20km — at low zoom cells are tens to hundreds
       // of km wide, so a fixed 20km glow renders as a tiny hard dot instead of
-      // the intended soft, overlapping "weather" blob. A 1.4x factor lets
-      // neighboring cells blend into each other instead of leaving visible gaps.
+      // the intended soft, overlapping "weather" blob. Lowered from 1.4x to
+      // 1.15x: the CSS gradient now has a solid core out to 45% instead of
+      // fading from the center, so cells no longer need as much extra padding
+      // to read as "connected" — and a bar-level dot is supposed to look like
+      // a tiny dot, not an oversized overlapping smudge.
       const cellMeters = (cell.size || 0.01) * 111000;
       // Floor at 14px — now that cells can shrink to ~11m (see
       // calculateCellSize), a single person at a deep building-level zoom
       // must still render as a visible soft dot, not a sub-pixel speck.
-      const px = Math.max(14, metersToPixels(cell.lat, zoom, cellMeters * 1.4));
+      const px = Math.max(14, metersToPixels(cell.lat, zoom, cellMeters * 1.15));
+      // Blur proportional to the cell's own pixel size instead of a fixed
+      // 30px — a fixed blur drowned small, zoomed-in dots into a blob much
+      // bigger than their nominal size (the "pulzálás túl nagynak érzem
+      // belezoomolva" complaint), while a big aggregated city-level blob
+      // still gets a generously soft edge.
+      const blurPx = Math.min(36, Math.max(4, px * 0.18));
+      const opacity = 0.3 + 0.65 * cell.intensity;
 
       if (markers.has(key)) {
         const m = markers.get(key);
@@ -312,7 +322,8 @@ export function MapView({
         const inner = m.getElement().querySelector('.mood-grid-cell-inner');
         if (inner) {
           inner.style.setProperty('--cell-color', cell.color);
-          inner.style.opacity = String(0.2 + 0.6 * cell.intensity);
+          inner.style.setProperty('--cell-blur', `${blurPx}px`);
+          inner.style.opacity = String(opacity);
           inner.style.width  = `${px}px`;
           inner.style.height = `${px}px`;
         }
@@ -322,7 +333,8 @@ export function MapView({
         const inner = document.createElement('div');
         inner.className = 'mood-grid-cell-inner';
         inner.style.setProperty('--cell-color', cell.color);
-        inner.style.opacity = String(0.2 + 0.6 * cell.intensity);
+        inner.style.setProperty('--cell-blur', `${blurPx}px`);
+        inner.style.opacity = String(opacity);
         inner.style.width  = `${px}px`;
         inner.style.height = `${px}px`;
         container.appendChild(inner);
