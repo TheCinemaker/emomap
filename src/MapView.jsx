@@ -3,20 +3,15 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { PIN_PATH_D } from './components/Icons';
+import { EMOTIONS } from './emotions';
 
 // Individual per-vote pulse flashes only render at this zoom or closer —
 // see the PULSES effect below for why.
 const PULSE_MIN_ZOOM = 8;
 
-const EMOTION_COLORS = {
-  happy:     '#34c759',
-  bored:     '#8e8e93',
-  stressed:  '#ff3b30',
-  tired:     '#ffcc00',
-  motivated: '#0a84ff',
-  love:      '#ff2d55',
-  hype:      '#bf5af2'
-};
+// Derived from emotions.js (the single source of truth for mood colors)
+// instead of its own hardcoded copy, which could drift from the real palette.
+const EMOTION_COLORS = EMOTIONS.reduce((acc, e) => ({ ...acc, [e.id]: e.color }), {});
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 

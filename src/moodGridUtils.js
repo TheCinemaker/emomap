@@ -1,15 +1,21 @@
 // src/moodGridUtils.js
 // Shared grid-bucketing + color-blend logic used by both the live mood grid
 // (useMoodGrid) and the 24h replay (useReplayData), so the two don't drift.
-export const EMOTION_RGB = {
-  happy:     [52, 199, 89],
-  bored:     [142, 142, 147],
-  stressed:  [255, 59, 48],
-  tired:     [255, 204, 0],
-  motivated: [10, 132, 255],
-  love:      [255, 45, 85],
-  hype:      [191, 90, 242],
-};
+import { EMOTIONS } from './emotions';
+
+function hexToRgbArray(hex) {
+  const h = hex.replace('#', '');
+  const num = parseInt(h, 16);
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+// Derived from emotions.js (the single source of truth for mood colors)
+// instead of its own hardcoded copy — used to carry its own duplicate list
+// that could (and did) drift out of sync with the actual palette.
+export const EMOTION_RGB = EMOTIONS.reduce(
+  (acc, e) => ({ ...acc, [e.id]: hexToRgbArray(e.color) }),
+  {}
+);
 
 // Hard safety ceiling on rendered cells, independent of how much underlying
 // data exists. Each cell becomes a real DOM node with a blur() filter and a
