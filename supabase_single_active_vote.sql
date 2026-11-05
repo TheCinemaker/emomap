@@ -27,6 +27,23 @@
 -- Idempotent: safe to run multiple times.
 
 alter table public.emotions add column if not exists is_active boolean not null default true;
+
+-- One-time cutover cleanup: adding the column above defaults EVERY existing
+-- row to active, including older rows from users who voted more than once
+-- in the current 1h window (very likely — this exact feature was built
+-- while live-testing repeated voting). Without this, the first run of this
+-- migration would instantly recreate the duplicate-aura bug it's meant to
+-- fix. Collapses each user down to just their most recent row as active.
+update public.emotions e
+set is_active = false
+where e.is_active = true
+  and exists (
+    select 1 from public.emotions newer
+    where newer.user_id = e.user_id
+      and newer.is_active = true
+      and newer.inserted_at > e.inserted_at
+  );
+
 create index if not exists emotions_active_user_idx on public.emotions (user_id) where is_active;
 create index if not exists emotions_active_window_idx on public.emotions (is_active, inserted_at);
 

@@ -1,5 +1,5 @@
 // src/useMoodGrid.js
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from './supabaseClient';
 import { calculateCellSize, buildGridCells, EMOTION_RGB, MAX_RENDERED_CELLS, cellIntensity } from './moodGridUtils';
 
@@ -51,6 +51,11 @@ export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
   // Keep the latest extraData in a ref so the effect can read it without re-subscribing
   const extraDataRef = useRef(extraData);
   useEffect(() => { extraDataRef.current = extraData; }, [extraData]);
+
+  // Always points at the current effect run's `load`, so `refetch` can
+  // force an immediate poll (e.g. right after casting a vote) instead of
+  // the caller waiting up to 15s for the next scheduled one.
+  const loadRef = useRef(null);
 
   useEffect(() => {
     if (!bounds || mapZoom === undefined) return;
@@ -133,12 +138,14 @@ export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
       }
     }
 
+    loadRef.current = load;
     load();
     // 15s, not 10s — same reasoning as useEmotionsPolling: this RPC re-runs
     // per viewer of this area, so the real load driver at a packed venue is
     // concurrent viewers, not vote volume. A longer interval directly cuts
     // query-rate-per-viewer; the 24h-window aggregate doesn't need sub-15s
-    // freshness anyway.
+    // freshness anyway. `refetch` (below) covers the "I just voted, don't
+    // make me wait" case instead of shortening this for everyone.
     const interval = setInterval(load, 15000);
 
     return () => {
@@ -147,5 +154,7 @@ export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
     };
   }, [bounds?.north, bounds?.south, bounds?.east, bounds?.west, mapZoom, sessionId]);
 
-  return { cells, loading, totalPoints, warning };
+  const refetch = useCallback(() => { loadRef.current?.(); }, []);
+
+  return { cells, loading, totalPoints, warning, refetch };
 }

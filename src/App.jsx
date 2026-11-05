@@ -5,7 +5,6 @@ import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
 import { useEmotionsPolling } from './useEmotionsPolling';
 import { useEmotionsStats } from './useEmotionsStats';
-import { usePersonalMood } from './usePersonalMood';
 import { useGeolocation } from './useGeolocation';
 import { useMoodGrid } from './useMoodGrid';
 import { useDebounce } from './useDebounce';
@@ -33,7 +32,6 @@ import FriendDetails from './components/FriendDetails';
 
 const SESSION_ID = 'global';
 const RATE_LIMIT_MS = 2 * 60 * 1000;
-const PERSONAL_AURA_LIFETIME_MS = 3 * 60 * 1000; // 180s — own pulse stays this long after voting
 const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
 // Lowered from 150m on user request: at 150m, a disco or a dense old-town
 // street (Kőszeg: a venue every ~30m) all blur into one indistinguishable
@@ -116,7 +114,6 @@ export default function App() {
   const [replayPlaying, setReplayPlaying] = useState(true);
 
   const [lastVotedEmotion, setLastVotedEmotion] = useState(null);
-  const [lastVoteLocation, setLastVoteLocation] = useState(null);
   const [now, setNow] = useState(Date.now());
 
   const { coords, error: geoError } = useGeolocation();
@@ -130,15 +127,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Personal aura lifetime: 180s after a vote, then hide it
-  useEffect(() => {
-    if (!lastVoteAt) return;
-    const timer = setTimeout(() => setLastVoteLocation(null), PERSONAL_AURA_LIFETIME_MS);
-    return () => clearTimeout(timer);
-  }, [lastVoteAt]);
-
   const stats = useEmotionsStats(debouncedBounds, SESSION_ID);
-  const personalMood = usePersonalMood(lastVoteLocation || coords, SESSION_ID);
 
   const [demoData, setDemoData] = useState([]);
 
@@ -246,7 +235,6 @@ export default function App() {
 
     const optimisticEvent = { ...event, id: tempId, inserted_at: new Date().toISOString() };
     setPulseBatch(prev => [...prev, optimisticEvent].slice(-200));
-    setLastVoteLocation({ lat, lng });
     setLastVoteAt(Date.now());
     setLastVotedEmotion(emotionId);
     setTimeout(() => setLastVotedEmotion(null), 1000);
@@ -273,12 +261,18 @@ export default function App() {
         setLastVoteAt(null);
       } else {
         triggerMirror(coords, emotionId);
+        // Don't make the voter wait up to 15s for the next scheduled poll
+        // to see their own vote on the grid — the mood-grid cell IS now
+        // the single source of truth for "is my vote visible" (no more
+        // separate personal-aura layer), so it needs to reflect this
+        // instantly.
+        moodGrid.refetch();
       }
     } catch (err) {
       console.error('Unexpected insert error:', err);
       setLastVoteAt(null);
     }
-  }, [canVote, coords, userId, triggerMirror]);
+  }, [canVote, coords, userId, triggerMirror, moodGrid.refetch]);
 
   const handleCitySearch = useCallback(async (e) => {
     e.preventDefault();
@@ -450,8 +444,6 @@ export default function App() {
           onBoundsChange={handleBoundsChange}
           onZoomChange={handleZoomChange}
           pulses={pulseBatch}
-          personalMood={personalMood}
-          personalAuraLocation={lastVoteLocation}
           moodGridCells={showReplay && hourlyGrids ? hourlyGrids[replayHour] : moodGrid.cells}
           venues={venues}
           onVenueClick={setViewVenueId}

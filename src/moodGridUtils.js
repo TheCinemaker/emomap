@@ -32,7 +32,16 @@ export function cellIntensity(total) {
 export function calculateCellSize(zoomLevel) {
   const baseSizeDeg = 0.01;
   const size = baseSizeDeg * Math.pow(2, 10 - zoomLevel);
-  return Math.max(0.005, Math.min(10, size));
+  // Floor used to sit at 0.005deg (~550m), which never shrank further no
+  // matter how far in you zoomed — at a festival/stadium/café-terrace zoom
+  // level that meant everyone within ~550m got fused into ONE big blended
+  // aura instead of appearing as separate people. Lowered to ~0.0001deg
+  // (~11m, roughly the GPS jitter radius itself — no point resolving finer
+  // than the jitter noise floor). A tight zoom also means a tiny physical
+  // viewport, so cell COUNT stays bounded even as each cell shrinks;
+  // MAX_RENDERED_CELLS is the actual safety net against a 10,000-person
+  // event, not this floor.
+  return Math.max(0.0001, Math.min(10, size));
 }
 
 // Formerly a k-anonymity floor requiring >=3 votes in a small cell before

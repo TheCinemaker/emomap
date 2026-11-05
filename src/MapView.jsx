@@ -84,8 +84,6 @@ export function MapView({
   viewCenter,
   onBoundsChange,
   pulses,
-  personalMood,
-  personalAuraLocation,
   moodGridCells,
   venues,
   onVenueClick,
@@ -94,7 +92,6 @@ export function MapView({
   const mapContainerRef    = useRef(null);
   const mapRef             = useRef(null);
   const userMarkerRef      = useRef(null);
-  const personalAuraRef    = useRef(null);
   const moodGridMarkersRef = useRef(new Map());
   const venueMarkersRef    = useRef(new Map());
 
@@ -192,45 +189,6 @@ export function MapView({
       userMarkerRef.current.setLngLat([coords.lng, coords.lat]);
     }
   }, [coords]);
-
-  // ── Personal Aura (zoom-aware size) ───────────────────────────────────────
-  useEffect(() => {
-    const map = mapRef.current;
-    const loc = personalAuraLocation;
-
-    if (!map || !loc || !personalMood?.color || personalMood.total === 0) {
-      if (personalAuraRef.current) { personalAuraRef.current.remove(); personalAuraRef.current = null; }
-      return;
-    }
-
-    const updateAura = () => {
-      if (!personalAuraRef.current) return;
-      const px = metersToPixels(loc.lat, map.getZoom(), 2000);
-      const inner = personalAuraRef.current.getElement().querySelector('.personal-aura-inner');
-      if (inner) {
-        inner.style.setProperty('--personal-color', personalMood.color);
-        inner.style.opacity = String(Math.min(1, 0.4 + 0.6 * personalMood.intensity));
-        inner.style.width  = `${px}px`;
-        inner.style.height = `${px}px`;
-      }
-    };
-
-    if (!personalAuraRef.current) {
-      const container = document.createElement('div');
-      container.className = 'personal-aura';
-      const inner = document.createElement('div');
-      inner.className = 'personal-aura-inner';
-      container.appendChild(inner);
-      personalAuraRef.current = new maplibregl.Marker({ element: container })
-        .setLngLat([loc.lng, loc.lat]).addTo(map);
-    } else {
-      personalAuraRef.current.setLngLat([loc.lng, loc.lat]);
-    }
-
-    updateAura();
-    map.on('zoom', updateAura);
-    return () => map.off('zoom', updateAura);
-  }, [personalAuraLocation, personalMood]);
 
   // ── Pulse zoom-resize listener ─────────────────────────────────────────────
   useEffect(() => {
@@ -348,7 +306,10 @@ export function MapView({
       // the intended soft, overlapping "weather" blob. A 1.4x factor lets
       // neighboring cells blend into each other instead of leaving visible gaps.
       const cellMeters = (cell.size || 0.01) * 111000;
-      const px = metersToPixels(cell.lat, zoom, cellMeters * 1.4);
+      // Floor at 14px — now that cells can shrink to ~11m (see
+      // calculateCellSize), a single person at a deep building-level zoom
+      // must still render as a visible soft dot, not a sub-pixel speck.
+      const px = Math.max(14, metersToPixels(cell.lat, zoom, cellMeters * 1.4));
 
       if (markers.has(key)) {
         const m = markers.get(key);
