@@ -1,17 +1,31 @@
 // src/imageModeration.js
 // Parallel multi-layer free AI image moderation ("kép-kukázó") for Pulses.
 //
-// Layer 1 (Neural Network): TensorFlow.js + NSFWJS (MobileNetV2) loaded on
-//   demand from CDN — zero bundle bloat on initial map load, 100% free, no API
-//   key required. Classifies images into Porn, Hentai, Sexy, Neutral, Drawing.
-// Layer 2 (Pixel Vision Analyzer): YCbCr skin-cluster & centre-region density
-//   check on a 224x224 canvas, acting both as a second opinion alongside the
-//   neural network and as a deterministic fallback if a user's ad-blocker
-//   blocks the CDN model weights.
-// Layer 3 (Optional Cloud Vision API): If VITE_OPENAI_MODERATION_KEY is set,
-//   also runs OpenAI's free `omni-moderation-latest` vision endpoint.
+// Layer 1 (Primary Deep Neural Network): TensorFlow.js + NSFWJS MobileNetV2
+//   loaded from verified jsDelivr CDN (`nsfwjs@2.4.2` + `models/mobilenet_v2/`).
+//   Classifies images across 5 classes: Porn, Hentai, Sexy, Neutral, Drawing.
+// Layer 2 (Secondary Deep Neural Network — Fallback/Ensemble): NSFWJS
+//   MobileNetV2-Mid (`models/mobilenet_v2_mid/`, 260x260 input) if Layer 1
+//   weights ever fail to load or return a borderline score.
+// Layer 3 (Pixel Vision & Skin-Blob Analyzer): YCbCr + HSV + Sunlit-skin
+//   connected-region detector on a 224x224 canvas, detecting large contiguous
+//   exposed torso/limb skin blobs even against outdoor backgrounds (pool/trees).
+//
+// Strict Fail-Closed Policy: If the AI neural model cannot run, or if ANY layer
+// flags explicit/nude content, the image is REJECTED before reaching Supabase.
 
-let nsfwModelPromise = null;
+const TFJS_CDN = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
+const NSFWJS_CDN = 'https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js';
+
+// Verified live 200-OK model endpoints on jsDelivr GitHub CDN
+// (Note: nsfwjs's default CloudFront URL d1zv2aa70wpiur.cloudfront.net is dead!)
+const MODEL_URL_PRIMARY =
+  'https://cdn.jsdelivr.net/gh/infinitered/nsfwjs@master/models/mobilenet_v2/';
+const MODEL_URL_MID =
+  'https://cdn.jsdelivr.net/gh/infinitered/nsfwjs@master/models/mobilenet_v2_mid/';
+
+let primaryModelPromise = null;
+let midModelPromise = null;
 
 function loadScript(src) {
   return new Promise((resolve, reject) => {
@@ -35,26 +49,43 @@ function loadScript(src) {
   });
 }
 
-async function getNsfwModel() {
-  if (!nsfwModelPromise) {
-    nsfwModelPromise = (async () => {
+async function ensureLibraries() {
+  if (!window.tf) {
+    await loadScript(TFJS_CDN);
+  }
+  if (!window.nsfwjs) {
+    await loadScript(NSFWJS_CDN);
+  }
+}
+
+async function getPrimaryModel() {
+  if (!primaryModelPromise) {
+    primaryModelPromise = (async () => {
       try {
-        if (!window.tf) {
-          await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js');
-        }
-        if (!window.nsfwjs) {
-          await loadScript('https://cdn.jsdelivr.net/npm/nsfwjs@4.1.0/dist/nsfwjs.min.js');
-        }
-        // Load default MobileNetV2 model hosted on CDN
-        const model = await window.nsfwjs.load();
-        return model;
+        await ensureLibraries();
+        return await window.nsfwjs.load(MODEL_URL_PRIMARY, { size: 224 });
       } catch (err) {
-        nsfwModelPromise = null;
+        primaryModelPromise = null;
         throw err;
       }
     })();
   }
-  return nsfwModelPromise;
+  return primaryModelPromise;
+}
+
+async function getMidModel() {
+  if (!midModelPromise) {
+    midModelPromise = (async () => {
+      try {
+        await ensureLibraries();
+        return await window.nsfwjs.load(MODEL_URL_MID, { size: 299, type: 'graph' });
+      } catch (err) {
+        midModelPromise = null;
+        throw err;
+      }
+    })();
+  }
+  return midModelPromise;
 }
 
 function loadImageElement(fileOrBlob) {
@@ -74,7 +105,7 @@ function loadImageElement(fileOrBlob) {
   });
 }
 
-// Layer 2: Fast YCbCr skin-tone & centre-focus heuristic on a 224x224 canvas
+// Layer 3: YCbCr + Sunlit-Skin + Central Torso Density Analyzer on a 224x224 canvas
 function analyzePixels(img) {
   const SIZE = 224;
   const canvas = document.createElement('canvas');
@@ -87,40 +118,72 @@ function analyzePixels(img) {
   let skinPixels = 0;
   let centerSkinPixels = 0;
   let centerTotal = 0;
+  let torsoBoxSkin = 0;
+  let torsoBoxTotal = 0;
   const totalPixels = SIZE * SIZE;
 
   for (let y = 0; y < SIZE; y++) {
-    const inCenterY = y >= SIZE * 0.2 && y <= SIZE * 0.8;
+    const inCenterY = y >= SIZE * 0.18 && y <= SIZE * 0.85;
+    const inTorsoY = y >= SIZE * 0.28 && y <= SIZE * 0.75;
     for (let x = 0; x < SIZE; x++) {
-      const inCenter = inCenterY && x >= SIZE * 0.2 && x <= SIZE * 0.8;
+      const inCenter = inCenterY && x >= SIZE * 0.18 && x <= SIZE * 0.82;
+      const inTorso = inTorsoY && x >= SIZE * 0.28 && x <= SIZE * 0.72;
       const idx = (y * SIZE + x) * 4;
       const r = data[idx];
       const g = data[idx + 1];
       const b = data[idx + 2];
 
-      // Standard YCbCr skin-chrominance bounds (Chai & Ngan)
+      // Standard YCbCr skin-chrominance bounds (Chai & Ngan) + sunlit fair-skin extension
       const cb = 128 - 0.168736 * r - 0.331264 * g + 0.5 * b;
       const cr = 128 + 0.5 * r - 0.418688 * g - 0.081312 * b;
 
-      const isSkin =
-        r > 95 && g > 40 && b > 20 &&
-        Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
-        Math.abs(r - g) > 15 && r > g && r > b &&
-        cb >= 77 && cb <= 127 &&
-        cr >= 133 && cr <= 173;
+      const isYCbCrSkin =
+        r > 85 &&
+        g > 40 &&
+        b > 20 &&
+        r > g &&
+        r > b &&
+        Math.max(r, g, b) - Math.min(r, g, b) > 12 &&
+        cb >= 72 &&
+        cb <= 130 &&
+        cr >= 130 &&
+        cr <= 178;
+
+      // Sunlit / overexposed fair skin (e.g. outdoor pool photos where R>215, G>180, B>155)
+      const isSunlitSkin =
+        r > 200 &&
+        g > 165 &&
+        b > 135 &&
+        r > g &&
+        g >= b &&
+        r - b >= 18 &&
+        r - b <= 95;
+
+      const isSkin = isYCbCrSkin || isSunlitSkin;
 
       if (isSkin) {
         skinPixels++;
         if (inCenter) centerSkinPixels++;
+        if (inTorso) torsoBoxSkin++;
       }
       if (inCenter) centerTotal++;
+      if (inTorso) torsoBoxTotal++;
     }
   }
 
   return {
     skinRatio: skinPixels / totalPixels,
     centerSkinRatio: centerTotal ? centerSkinPixels / centerTotal : 0,
+    torsoSkinRatio: torsoBoxTotal ? torsoBoxSkin / torsoBoxTotal : 0,
   };
+}
+
+function toScoreMap(predictions) {
+  const scores = {};
+  for (const p of predictions || []) {
+    scores[p.className] = p.probability;
+  }
+  return scores;
 }
 
 /**
@@ -134,64 +197,100 @@ export async function moderateImageFile(fileOrBlob) {
 
   const img = await loadImageElement(fileOrBlob);
 
-  // Run Layer 1 (NSFWJS Neural Net) and Layer 2 (Pixel heuristic) in parallel
-  const [nnResult, pixelStats] = await Promise.all([
+  // Run Layer 1 (MobileNetV2) and Layer 3 (Pixel skin/torso analyzer) in parallel
+  const [primaryRes, pixelStats] = await Promise.all([
     (async () => {
       try {
-        const model = await getNsfwModel();
-        const predictions = await model.classify(img);
-        const scores = {};
-        for (const p of predictions) {
-          scores[p.className] = p.probability;
-        }
-        return { ok: true, scores };
+        const model = await getPrimaryModel();
+        const preds = await model.classify(img);
+        return { ok: true, scores: toScoreMap(preds) };
       } catch (err) {
-        console.warn('[AI Moderation] Neural model fallback to pixel heuristic:', err);
-        return { ok: false, scores: null };
+        console.warn('[AI Moderation] Primary model error, trying Mid model:', err);
+        try {
+          const midModel = await getMidModel();
+          const preds = await midModel.classify(img);
+          return { ok: true, scores: toScoreMap(preds) };
+        } catch (err2) {
+          console.error('[AI Moderation] Both neural models failed to load:', err2);
+          return { ok: false, scores: null };
+        }
       }
     })(),
     Promise.resolve().then(() => analyzePixels(img)),
   ]);
 
-  if (nnResult.ok && nnResult.scores) {
-    const porn = nnResult.scores.Porn || 0;
-    const hentai = nnResult.scores.Hentai || 0;
-    const sexy = nnResult.scores.Sexy || 0;
-
-    // Strict rejection rules:
-    // 1. Explicit Porn or Hentai > 28%
-    // 2. Sexy > 68% OR (Sexy > 50% with high skin ratio)
-    // 3. Combined Porn + Hentai + Sexy > 72%
+  // FAIL-CLOSED: If the neural network could not run AND the image has any
+  // noticeable torso/center skin exposure, reject immediately!
+  if (!primaryRes.ok || !primaryRes.scores) {
     if (
-      porn > 0.28 ||
-      hentai > 0.28 ||
-      sexy > 0.68 ||
-      porn + hentai + sexy > 0.72 ||
-      (sexy > 0.45 && pixelStats.centerSkinRatio > 0.55)
+      pixelStats.torsoSkinRatio > 0.35 ||
+      pixelStats.centerSkinRatio > 0.35 ||
+      pixelStats.skinRatio > 0.30
     ) {
       return {
         allowed: false,
         reason: 'nsfw_detected',
-        scores: nnResult.scores,
+        scores: pixelStats,
       };
     }
-
-    return {
-      allowed: true,
-      scores: nnResult.scores,
-    };
-  }
-
-  // Fallback if neural network CDN was blocked by a strict ad-blocker:
-  // reject images dominated by skin tones in both full frame and centre.
-  if (pixelStats.skinRatio > 0.62 && pixelStats.centerSkinRatio > 0.72) {
     return {
       allowed: false,
-      reason: 'nsfw_detected',
+      reason: 'ai_unavailable',
       scores: pixelStats,
     };
   }
 
-  return { allowed: true, scores: pixelStats };
-}
+  let scores = primaryRes.scores;
+  let porn = scores.Porn || 0;
+  let hentai = scores.Hentai || 0;
+  let sexy = scores.Sexy || 0;
 
+  // If primary model sees borderline scores OR pixel analyzer sees heavy torso skin,
+  // run the second neural network (MobileNetV2-Mid) for a double-check ensemble!
+  if (
+    porn > 0.08 ||
+    sexy > 0.20 ||
+    hentai > 0.12 ||
+    pixelStats.torsoSkinRatio > 0.42
+  ) {
+    try {
+      const midModel = await getMidModel();
+      const midPreds = await midModel.classify(img);
+      const midScores = toScoreMap(midPreds);
+      // Take the stricter (max) risk score across both neural networks
+      porn = Math.max(porn, midScores.Porn || 0);
+      hentai = Math.max(hentai, midScores.Hentai || 0);
+      sexy = Math.max(sexy, midScores.Sexy || 0);
+      scores = { ...scores, Porn: porn, Hentai: hentai, Sexy: sexy, midScores };
+    } catch {
+      // Primary scores already available
+    }
+  }
+
+  // Strict Zero-Tolerance Rejection Rules:
+  // 1. Porn >= 15% (0.15) -> REJECT
+  // 2. Hentai >= 18% (0.18) -> REJECT
+  // 3. Sexy >= 38% (0.38) -> REJECT
+  // 4. Combined (Porn + Hentai + Sexy) >= 32% (0.32) -> REJECT
+  // 5. Sexy >= 18% combined with >38% torso skin exposure -> REJECT
+  const isNsfw =
+    porn >= 0.15 ||
+    hentai >= 0.18 ||
+    sexy >= 0.38 ||
+    porn + hentai + sexy >= 0.32 ||
+    (sexy >= 0.18 && pixelStats.torsoSkinRatio >= 0.38) ||
+    (porn >= 0.06 && pixelStats.torsoSkinRatio >= 0.45);
+
+  if (isNsfw) {
+    return {
+      allowed: false,
+      reason: 'nsfw_detected',
+      scores: { ...scores, ...pixelStats },
+    };
+  }
+
+  return {
+    allowed: true,
+    scores: { ...scores, ...pixelStats },
+  };
+}

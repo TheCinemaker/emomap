@@ -94,19 +94,26 @@ export default function PulsesPage({ session, t }) {
     }
 
     const reelIds = rows.map((r) => r.id);
-    const userIds = [...new Set(rows.map((r) => r.user_id))];
-
     const [
-      { data: profiles },
       { data: likes },
       { data: reposts },
       { data: commentsData },
     ] = await Promise.all([
-      supabase.from('profiles').select('id, username, avatar_url').in('id', userIds),
       supabase.from('reel_likes').select('reel_id, user_id').in('reel_id', reelIds),
-      supabase.from('reel_reposts').select('reel_id, user_id').in('reel_id', reelIds),
+      supabase.from('reel_reposts').select('reel_id, user_id, created_at').in('reel_id', reelIds),
       supabase.from('reel_comments').select('id, reel_id').in('reel_id', reelIds),
     ]);
+
+    const userIds = [
+      ...new Set([
+        ...rows.map((r) => r.user_id),
+        ...(reposts || []).map((rp) => rp.user_id),
+      ]),
+    ];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url')
+      .in('id', userIds);
 
     const profileMap = (profiles || []).reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
 
@@ -119,9 +126,14 @@ export default function PulsesPage({ session, t }) {
 
     const nextRepostCounts = {};
     const nextRepostedByMe = {};
+    const latestRepostByReel = {};
     for (const rp of reposts || []) {
       nextRepostCounts[rp.reel_id] = (nextRepostCounts[rp.reel_id] || 0) + 1;
       if (rp.user_id === userId) nextRepostedByMe[rp.reel_id] = true;
+      const prevLatest = latestRepostByReel[rp.reel_id];
+      if (!prevLatest || new Date(rp.created_at) > new Date(prevLatest.created_at)) {
+        latestRepostByReel[rp.reel_id] = rp;
+      }
     }
 
     const nextCommentCounts = {};
@@ -135,13 +147,26 @@ export default function PulsesPage({ session, t }) {
     setRepostedByMe(nextRepostedByMe);
     setCommentCounts(nextCommentCounts);
 
-    setPulses(
-      rows.map((r) => ({
+    // Enrich and sort by latest activity (repost bumps the Pulse back to the top of the feed!)
+    const enriched = rows.map((r) => {
+      const latestRp = latestRepostByReel[r.id];
+      const sortAt =
+        latestRp?.created_at && new Date(latestRp.created_at) > new Date(r.created_at)
+          ? latestRp.created_at
+          : r.created_at;
+      return {
         ...r,
         username: profileMap[r.user_id]?.username || t('reels_unknown'),
         avatar_url: profileMap[r.user_id]?.avatar_url || null,
-      }))
-    );
+        latestReposter: latestRp
+          ? profileMap[latestRp.user_id]?.username || t('reels_unknown')
+          : null,
+        sortAt,
+      };
+    });
+
+    enriched.sort((a, b) => new Date(b.sortAt) - new Date(a.sortAt));
+    setPulses(enriched);
     setLoading(false);
   }, [userId, t]);
 
@@ -202,8 +227,10 @@ export default function PulsesPage({ session, t }) {
     if (nextReposted) {
       await supabase.from('reel_reposts').insert({ reel_id: reelId, user_id: userId });
       showToast(t('pulses_reposted_toast'));
+      await fetchPulses();
     } else {
       await supabase.from('reel_reposts').delete().eq('reel_id', reelId).eq('user_id', userId);
+      await fetchPulses();
     }
   };
 
@@ -496,7 +523,11 @@ export default function PulsesPage({ session, t }) {
               <div className="pulse-meta" onClick={(e) => e.stopPropagation()}>
                 {repostCnt > 0 && (
                   <div className="pulse-repost-pill">
-                    🔁 {repostCnt}× {t('pulses_reposted_badge')}
+                    🔁{' '}
+                    {pulse.latestReposter
+                      ? t('pulses_reposted_by', { user: pulse.latestReposter })
+                      : `${repostCnt}× ${t('pulses_reposted_badge')}`}
+                    {repostCnt > 1 ? ` (+${repostCnt - 1})` : ''}
                   </div>
                 )}
                 <div className="pulse-author-row">
