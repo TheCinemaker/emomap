@@ -23,9 +23,16 @@
 //      * Child abuse, crying/distressed children (`child_safety`)
 //      * Exposed female breasts/nipples vs. allowed bikini/swimwear (`nudity_explicit`)
 //
-// 3. Blood / Crimson Wound Detector (Local Canvas Check):
-//    - Fast arterial/coagulated blood cluster detector as an instant offline
-//      guard against gore/wounds even when running on localhost without CF Workers AI.
+// IMPORTANT — gore/animal-cruelty/child-safety detection ONLY exists in this
+// cloud step. The local NSFWJS model below is a nudity/porn classifier; it
+// has no concept of blood, gore, dead animals, or child distress. If
+// `/api/moderate` returns `{ok:false}` — e.g. the Cloudflare Pages project's
+// Workers AI binding (`env.AI`) isn't configured yet, the call times out, or
+// neither Llama nor LLaVA returns a parseable verdict — moderation silently
+// falls back to nudity-only checking (see branch 2 in moderateImageFile)
+// with NO gore/animal-cruelty/child-safety coverage at all. Verify the "AI"
+// binding is actually added under the Cloudflare Pages project's
+// Settings → Functions before relying on this for anything beyond nudity.
 
 const TFJS_CDN = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
 const NSFWJS_CDN = 'https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js';
@@ -219,6 +226,11 @@ export async function moderateImageFile(fileOrBlob) {
   }
 
   // 2. Local Neural Network Decision (when offline or before Cloud AI binding is active):
+  //    This path has NO gore/animal-cruelty/child-safety coverage — only
+  //    nudity. Logged loudly so a missing/misconfigured `env.AI` binding on
+  //    Cloudflare Pages doesn't silently degrade moderation unnoticed.
+  console.warn('[AI Moderation] Cloud vision check unavailable — falling back to nudity-only local check (no gore/animal-cruelty/child-safety coverage this time).');
+
   //    Fail-closed if the neural network itself failed to load.
   if (!nnRes.ok || !nnRes.scores) {
     return {
