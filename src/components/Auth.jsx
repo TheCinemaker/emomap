@@ -236,6 +236,15 @@ export default function Auth() {
           </button>
         </form>
 
+        {isSignUp && (
+          <p className="auth-legal-note">
+            {t('auth_legal_prefix')}{' '}
+            <a href={lang === 'hu' ? '/legal/aszf.html' : '/legal/terms.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_terms')}</a>
+            {' '}{t('auth_legal_and')}{' '}
+            <a href={lang === 'hu' ? '/legal/adatkezeles.html' : '/legal/privacy.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_privacy')}</a>.
+          </p>
+        )}
+
         <div className="auth-divider"><span>{t('auth_or')}</span></div>
 
         <button

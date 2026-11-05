@@ -156,6 +156,12 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
           </button>
         )}
         <button type="button" className="profile-logout" onClick={onLogout}>{t('logout')}</button>
+
+        <p className="profile-legal-note">
+          <a href={lang === 'hu' ? '/legal/aszf.html' : '/legal/terms.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_terms')}</a>
+          {' · '}
+          <a href={lang === 'hu' ? '/legal/adatkezeles.html' : '/legal/privacy.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_privacy')}</a>
+        </p>
       </div>
     </div>
   );

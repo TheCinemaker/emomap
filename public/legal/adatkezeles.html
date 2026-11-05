@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adatkezelési Tájékoztató — EmoMap</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  :root {
+    --bg: #0a0c10; --fg: #e6e8ee; --fg-muted: #98a0b3; --border: rgba(255,255,255,0.1);
+    --accent: #6366f1; --bg-elev: rgba(255,255,255,0.04);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6; padding: 0 20px 80px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { padding: 32px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; color: var(--fg); }
+  h1 { font-size: 26px; margin: 20px 0 4px; }
+  .updated { color: var(--fg-muted); font-size: 13px; margin-bottom: 0; }
+  h2 { font-size: 19px; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 28px; }
+  h3 { font-size: 15px; color: var(--fg); margin-top: 20px; }
+  p, li { color: #c7cbd6; font-size: 15px; }
+  a { color: var(--accent); }
+  .placeholder { background: rgba(245, 180, 0, 0.12); color: #f5b400; padding: 1px 6px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--fg-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .lang-row { display: flex; gap: 8px; margin-top: 10px; }
+  .lang-row a { border: 1px solid var(--border); padding: 5px 12px; border-radius: 999px; font-size: 13px; text-decoration: none; color: var(--fg-muted); }
+  .lang-row a.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+  footer { margin-top: 50px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="/">🌍 EmoMap</a>
+    <h1>Adatkezelési Tájékoztató</h1>
+    <p class="updated">Utolsó frissítés: <span class="placeholder">[DÁTUM]</span> · Elérhető <a href="/legal/privacy.html">angolul</a> is</p>
+    <div class="lang-row">
+      <a href="/legal/privacy.html">EN</a>
+      <a class="current" href="/legal/adatkezeles.html">HU</a>
+    </div>
+  </header>
+
+  <p>Ez a tájékoztató leírja, hogy az EmoMap ("<strong>EmoMap</strong>", "mi") milyen személyes adatokat kezel az EmoMap alkalmazás és weboldal ("<strong>Szolgáltatás</strong>") használata során, miért, kikkel osztjuk meg, és milyen jogaid vannak ezekkel kapcsolatban. A dokumentum a Szolgáltatás tényleges, valós működését írja le, nem egy általános sablont.</p>
+
+  <h2>1. Az adatkezelő</h2>
+  <p>
+    <strong class="placeholder">[ÜZEMELTETŐ / CÉG NEVE]</strong><br>
+    Székhely: <span class="placeholder">[SZÉKHELY CÍME]</span><br>
+    Cégjegyzékszám / adószám: <span class="placeholder">[CÉGJEGYZÉKSZÁM VAGY ADÓSZÁM]</span><br>
+    Adatvédelmi kapcsolattartó: <a href="mailto:[PRIVACY_EMAIL]" class="placeholder">[ADATVÉDELMI KAPCSOLATI EMAIL]</a>
+  </p>
+
+  <h2>2. Milyen adatokat kezelünk, és miért</h2>
+
+  <h3>2.1 Fiókadatok</h3>
+  <p>Regisztrációkor az <strong>email-címedet</strong> és egy általad választott <strong>felhasználónevet</strong> kezelünk. A jelszavadat a hitelesítési szolgáltatónk (Supabase Auth) kezeli, azt mi sosem látjuk nyílt szövegként. <em>Jogalap: szerződés teljesítése (fiók biztosítása) és hozzájárulás a regisztrációkor.</em></p>
+
+  <h3>2.2 Helyadat — és ennek tudatos korlátozása</h3>
+  <p>Amikor hangulatot teszel fel, a böngésződ Geolocation API-ján keresztül olvassuk le az eszközöd GPS-pozícióját, egy kis véletlenszerű eltolást alkalmazunk rá (jelenleg ~10 méter), <strong>mielőtt az bármikor is elhagyná az eszközödet</strong>, és csak ezt a hozzávetőleges pontot tároljuk a hangulattal és egy időbélyeggel együtt. Ezt kifejezetten azért tesszük, hogy egyetlen tárolt pont se legyen felhasználható egy pontos cím beazonosítására. A nyers, módosítatlan GPS-koordinátáidat nem tároljuk. <em>Jogalap: hozzájárulás (a helymeghatározást aktívan engedélyezned kell, és te döntesz a hangulat feltöltéséről).</em></p>
+
+  <h3>2.3 Hangulat-adat</h3>
+  <p>Minden feltöltött hangulatod (érzelem-címke + a módosított helyadat + időbélyeg) látható a Szolgáltatás más felhasználói számára az élő térkép részeként — ez az EmoMap szándékosan nyilvános, központi funkciója. A kizoomolt, összesített nézeteknél egy minimális mintaszám-küszöböt is alkalmazunk, hogy egy nagyon ritkán lakott területen ne lehessen egyetlen ember hangulatát beazonosítani.</p>
+
+  <h3>2.4 Profilkép és opcionális profiladatok</h3>
+  <p>Opcionálisan feltölthetsz egy profilképet. Emellett opcionálisan megadhatsz kiterjesztett adatokat — teljes nevet, telefonszámot, címet, születési dátumot, egy elérhetőségi megjegyzést és közösségimédia-linkeket. <strong>Ezen mezők egyike sem látható senki számára alapértelmezetten.</strong> Minden mezőnek saját láthatóság-kapcsolója van, és még bekapcsolt állapotban is csak azoknak látszik, akikkel kölcsönösen elfogadott barátságban állsz — soha nem nyilvánosan, és ezt a szerverünk kényszeríti ki, nem csak az alkalmazás felülete rejti el. <em>Jogalap: hozzájárulás — ezen mezők megadása és megosztása teljesen opcionális és általad vezérelt.</em></p>
+
+  <h3>2.5 Barátok és üzenetek</h3>
+  <p>Ha barátkérést küldesz vagy fogadsz el, ezt a kapcsolatot tároljuk. Ha üzenetet küldesz egy barátodnak, tároljuk az üzenet tartalmát, a küldőt, a címzettet és az időbélyegeket, hogy a beszélgetés mindkét fél számára megjeleníthető legyen. Csak olyan felhasználóknak tudsz üzenni, akikkel kölcsönösen kapcsolatban állsz — idegeneknek nem. <em>Jogalap: hozzájárulás / az adott funkció igénybevétele.</em></p>
+
+  <h3>2.6 Fotók ("Reels")</h3>
+  <p>Feltölthetsz egy fotót, ami más felhasználók számára látható, és rövid idő (jelenleg 20 perc) után automatikusan eltűnik a megjelenítésből. A feltöltött fotókat az eszközödön tömörítjük feltöltés előtt. <em>Jogalap: hozzájárulás.</em></p>
+
+  <h3>2.7 Helyszín / üzleti partner adatok</h3>
+  <p>Ha a fiókod üzleti partnerként van engedélyezve, megadhatod egy helyszín nevét, kategóriáját, pontos helyét, logóját, promóciós képét, leírását és egy call-to-action linket, amelyek nyilvánosan megjelennek a térképen a helyszín népszerűsítésére. Emellett összesített megtekintés- és kattintásszámot is rögzítünk az adott helyszínhez. <em>Jogalap: szerződés teljesítése (a partneri megállapodás) és hozzájárulás.</em></p>
+
+  <h3>2.8 Technikai és helyi adatok</h3>
+  <p>A nyelvi preferenciádat, a legutóbbi szavazásod időpontját (a visszaszámláló megjelenítéséhez) és a bejelentkezési munkameneted a böngésződ helyi tárolójában tároljuk, nem a szervereinken, és ezek sosem hagyják el az eszközödet. A szokásos webszerver-naplókat (IP-cím, böngészőtípus, kérés időbélyege) a tárhely- és infrastruktúra-szolgáltatóink generálják biztonsági és üzemeltetési célból.</p>
+
+  <h2>3. Kikkel osztjuk meg az adatokat</h2>
+  <p>Az EmoMap üzemeltetéséhez az alábbi szolgáltatókat (adatfeldolgozókat) vesszük igénybe. Adataidat senkinek nem adjuk el.</p>
+  <table>
+    <tr><th>Szolgáltató</th><th>Cél</th><th>Érintett adatok</th></tr>
+    <tr><td>Supabase</td><td>Adatbázis, hitelesítés, fájltárolás, élő frissítések</td><td>A fent leírt összes fiók-, hangulat-, profil-, közösségi és helyszín-adat</td></tr>
+    <tr><td>Cloudflare</td><td>Weboldal tárhely és tartalomkézbesítés</td><td>Szokásos webes kérés-metaadatok</td></tr>
+    <tr><td>OpenFreeMap</td><td>Az alkalmazásban megjelenő térképcsempék</td><td>Szokásos webes kérés-metaadatok (fiókadat nem kerül átadásra)</td></tr>
+    <tr><td>OpenStreetMap Nominatim</td><td>Város/helyszín-keresés</td><td>A keresőmezőbe beírt szöveg</td></tr>
+    <tr><td class="placeholder">[STRIPE — a fizetős funkció indulásakor]</td><td>Fizetésfeldolgozás a fizetős partner-funkciókhoz</td><td>A fizetési adatokat közvetlenül a fizetési szolgáltató kezeli, kártyaadatot mi nem tárolunk</td></tr>
+  </table>
+  <p>Az adatbázis-infrastruktúránk helye: <span class="placeholder">[SUPABASE PROJEKT RÉGIÓJA, pl. "Európai Unió (Frankfurt)" vagy "Amerikai Egyesült Államok"]</span>. <span class="placeholder">[Ha az EU/EGT-n kívül: egészítsd ki az alkalmazott adattovábbítási garanciával, pl. Általános Szerződési Feltételek (SCC).]</span></p>
+
+  <h2>4. Meddig őrizzük az adatokat</h2>
+  <p>A fiók- és hangulat-adatokat a fiókod aktív fennállásáig őrizzük. A Reels fotók 20 perc után eltűnnek a nyilvános megjelenítésből, a tárolt fájlt pedig ezt követően folyamatos ütemben töröljük. Ha törlöd a fiókodat (lásd 6. pont), a személyes adataidat <span class="placeholder">[MEGŐRZÉSI IDŐ, pl. 30 nap]</span> napon belül töröljük vagy anonimizáljuk, kivéve ha jogszabály hosszabb megőrzést ír elő (pl. partnerek számlázási adatai).</p>
+
+  <h2>5. Biztonság</h2>
+  <p>Számos technikai intézkedést alkalmazunk, kifejezetten a helyadatok érzékenysége miatt: a GPS-koordinátákat tárolás előtt véletlenszerűsítjük (ld. 2.2); a térkép-nézetek elnyomják a statisztikát olyan területeken, ahol túl kevés a hozzájáruló ahhoz, hogy valakit be lehessen azonosítani; az adatbázishoz való hozzáférést sor-szintű biztonsági szabályok (Row-Level Security) szabályozzák, így például az opcionális profiladataidat kizárólag elfogadott barátaid láthatják — ezt adatbázis-szinten kényszerítjük ki, nem csak az alkalmazás felületén rejtjük el. A készüléked és a szervereink közötti teljes forgalom titkosított (HTTPS).</p>
+
+  <h2>6. Az Ön jogai</h2>
+  <p>A vonatkozó jogszabályok (így a GDPR) alapján jogod van:</p>
+  <ul>
+    <li><strong>Hozzáférni</strong> a rólad kezelt személyes adatokhoz.</li>
+    <li><strong>Helyesbíteni</strong> a pontatlan adatokat (a legtöbb profil-mező közvetlenül szerkeszthető az alkalmazásban).</li>
+    <li><strong>Töröltetni</strong> a fiókodat és a kapcsolódó személyes adataidat.</li>
+    <li><strong>Korlátozni vagy tiltakozni</strong> bizonyos adatkezelések ellen.</li>
+    <li><strong>Adathordozhatóság</strong> — adataid másolatát géppel olvasható formában kérheted.</li>
+    <li><strong>Hozzájárulásod bármikor visszavonni</strong> (pl. a helymeghatározás kikapcsolásával, vagy egy opcionális profilmező eltávolításával).</li>
+    <li><strong>Panaszt tenni</strong> a Nemzeti Adatvédelmi és Információszabadság Hatóságnál (<a href="https://naih.hu" target="_blank" rel="noopener">NAIH</a>).</li>
+  </ul>
+  <p>A fenti jogok gyakorlásához lépj kapcsolatba velünk: <a href="mailto:[PRIVACY_EMAIL]" class="placeholder">[ADATVÉDELMI KAPCSOLATI EMAIL]</a>.</p>
+
+  <h2>7. Kiskorúak</h2>
+  <p>Az EmoMap nem gyermekeknek szól, és <span class="placeholder">[MINIMUM ÉLETKOR, pl. 16]</span> éves vagy idősebb felhasználóknak készült. Tudatosan nem gyűjtünk személyes adatot ennél fiatalabb gyermekektől. Ha úgy gondolod, hogy egy gyermek adott meg nálunk személyes adatot, kérjük, jelezd, hogy törölhessük.</p>
+
+  <h2>8. Sütik és helyi tárolás</h2>
+  <p>Nem használunk harmadik féltől származó hirdetési vagy követő sütiket. A böngésződ helyi tárolóját kizárólag a nyelvi beállításodhoz, a bejelentkezési munkamenetedhez és a szavazási visszaszámlálóhoz használjuk — ezek mind a Szolgáltatás működéséhez feltétlenül szükségesek, nem követés vagy analitika céljából.</p>
+
+  <h2>9. A tájékoztató módosítása</h2>
+  <p>A Szolgáltatás fejlődésével ezt a tájékoztatót frissíthetjük. Lényegi módosítás esetén ésszerű erőfeszítést teszünk, hogy az aktív felhasználókat értesítsük az alkalmazáson belül.</p>
+
+  <footer>
+    EmoMap — <a href="/legal/aszf.html">Általános Szerződési Feltételek</a> · <a href="mailto:[PRIVACY_EMAIL]" class="placeholder">[ADATVÉDELMI KAPCSOLATI EMAIL]</a>
+  </footer>
+</div>
+</body>
+</html>

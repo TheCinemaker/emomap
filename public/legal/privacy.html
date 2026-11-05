@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — EmoMap</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+  :root {
+    --bg: #0a0c10; --fg: #e6e8ee; --fg-muted: #98a0b3; --border: rgba(255,255,255,0.1);
+    --accent: #6366f1; --bg-elev: rgba(255,255,255,0.04);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6; padding: 0 20px 80px;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { padding: 32px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 32px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; text-decoration: none; color: var(--fg); }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  h1 { font-size: 26px; margin: 20px 0 4px; }
+  .updated { color: var(--fg-muted); font-size: 13px; margin-bottom: 0; }
+  h2 { font-size: 19px; margin-top: 40px; border-top: 1px solid var(--border); padding-top: 28px; }
+  h3 { font-size: 15px; color: var(--fg); margin-top: 20px; }
+  p, li { color: #c7cbd6; font-size: 15px; }
+  a { color: var(--accent); }
+  .placeholder { background: rgba(245, 180, 0, 0.12); color: #f5b400; padding: 1px 6px; border-radius: 4px; font-weight: 600; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--fg-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .lang-row { display: flex; gap: 8px; margin-top: 10px; }
+  .lang-row a { border: 1px solid var(--border); padding: 5px 12px; border-radius: 999px; font-size: 13px; text-decoration: none; color: var(--fg-muted); }
+  .lang-row a.current { background: var(--accent); color: #fff; border-color: var(--accent); }
+  footer { margin-top: 50px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--fg-muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="/">🌍 EmoMap</a>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: <span class="placeholder">[DATE]</span> · Also available in <a href="/legal/adatkezeles.html">Hungarian</a></p>
+    <div class="lang-row">
+      <a class="current" href="/legal/privacy.html">EN</a>
+      <a href="/legal/adatkezeles.html">HU</a>
+    </div>
+  </header>
+
+  <p>This Privacy Policy explains what personal data EmoMap ("<strong>EmoMap</strong>", "we", "us") collects when you use the EmoMap app and website (the "<strong>Service</strong>"), why we collect it, who we share it with, and what rights you have over it. It's written to describe exactly what the Service actually does — not a generic template.</p>
+
+  <h2>1. Who is responsible for your data (data controller)</h2>
+  <p>
+    <strong class="placeholder">[OPERATOR / COMPANY NAME]</strong><br>
+    Registered address: <span class="placeholder">[REGISTERED ADDRESS]</span><br>
+    Company registration / tax number: <span class="placeholder">[REGISTRATION OR TAX NUMBER]</span><br>
+    Contact for privacy matters: <a href="mailto:[PRIVACY_EMAIL]" class="placeholder">[PRIVACY CONTACT EMAIL]</a>
+  </p>
+
+  <h2>2. What data we collect, and why</h2>
+
+  <h3>2.1 Account data</h3>
+  <p>When you sign up, we collect your <strong>email address</strong> and a <strong>username</strong> you choose. Your password is handled by our authentication provider (Supabase Auth) and is never visible to us in plain text. <em>Legal basis: performance of a contract (providing you an account) and consent at sign-up.</em></p>
+
+  <h3>2.2 Location data — and how we deliberately limit it</h3>
+  <p>When you post a mood, we read your device's GPS location via your browser's Geolocation API, apply a small random offset (currently ~10 meters) <strong>before it ever leaves your device</strong>, and store only that approximate point together with your mood and a timestamp. We do this specifically so a single stored point can't be used to pinpoint an exact address. We do not store your raw, un-adjusted GPS coordinates. <em>Legal basis: consent (you must actively grant location permission and choose to post a mood).</em></p>
+
+  <h3>2.3 Mood data</h3>
+  <p>Each mood you post (an emotion label + the adjusted location + a timestamp) is visible to other users of the Service as part of the live map — this is the core, intentionally public feature of EmoMap. Aggregated/zoomed-out views apply an additional minimum-sample threshold so a very sparse area can't be used to single out one person's mood.</p>
+
+  <h3>2.4 Profile photo and optional profile details</h3>
+  <p>You may optionally upload a profile photo. You may also optionally fill in extended details — full name, phone number, address, birth date, a contact note, and social media links. <strong>None of these optional fields are visible to anyone by default.</strong> Each field has its own visibility switch, and even when switched on, it is only ever shown to users you have mutually accepted as friends — never publicly, and this is enforced on our server, not just hidden in the app's interface. <em>Legal basis: consent — providing and sharing these fields is entirely optional and user-controlled.</em></p>
+
+  <h3>2.5 Friends and messages</h3>
+  <p>If you send or accept a friend request, we store that connection. If you message a friend, we store the message content, sender, recipient, and timestamps so the conversation can be displayed to both participants. You can only message users you are mutually connected with — not strangers. <em>Legal basis: consent / performance of the specific feature you've chosen to use.</em></p>
+
+  <h3>2.6 Photos ("Reels")</h3>
+  <p>You may post a photo that is visible to other users and automatically deleted from view after a short time (currently 20 minutes). Uploaded photos are compressed on your device before upload. <em>Legal basis: consent.</em></p>
+
+  <h3>2.7 Venue / business partner data</h3>
+  <p>If your account is enabled as a business partner, you may submit a venue's name, category, exact location, logo, promotional image, description, and a call-to-action link, which are shown publicly on the map to promote your venue. We also record aggregate view and click counts for that listing. <em>Legal basis: performance of a contract (the partner arrangement) and consent.</em></p>
+
+  <h3>2.8 Technical and local data</h3>
+  <p>Your language preference, your most recent vote time (to show a cooldown timer), and your login session are stored in your browser's local storage, not on our servers, and never leave your device. Standard web server logs (IP address, browser type, request timestamps) are generated by our hosting and infrastructure providers for security and operational purposes.</p>
+
+  <h2>3. Who we share data with</h2>
+  <p>We use the following service providers (data processors) to run EmoMap. We do not sell your data to anyone.</p>
+  <table>
+    <tr><th>Provider</th><th>Purpose</th><th>Data involved</th></tr>
+    <tr><td>Supabase</td><td>Database, authentication, file storage, realtime updates</td><td>All account, mood, profile, social, and venue data described above</td></tr>
+    <tr><td>Cloudflare</td><td>Website hosting and content delivery</td><td>Standard web request metadata</td></tr>
+    <tr><td>OpenFreeMap</td><td>Map tiles shown in the app</td><td>Standard web request metadata (no account data is sent)</td></tr>
+    <tr><td>OpenStreetMap Nominatim</td><td>City/place search</td><td>The text you type into the city search box</td></tr>
+    <tr><td class="placeholder">[STRIPE — once payments launch]</td><td>Payment processing for paid partner features</td><td>Payment details are handled directly by the payment processor; we do not store card numbers</td></tr>
+  </table>
+  <p>Our database infrastructure is hosted in: <span class="placeholder">[SUPABASE PROJECT REGION, e.g. "the European Union (Frankfurt)" or "the United States"]</span>. <span class="placeholder">[If outside the EU/EEA: add a sentence on the transfer safeguard relied on, e.g. Standard Contractual Clauses.]</span></p>
+
+  <h2>4. How long we keep your data</h2>
+  <p>We keep account and mood data for as long as your account is active. Reels photos are removed from public view after 20 minutes but the storage file is deleted on a rolling basis shortly after. If you delete your account (see Section 6), we delete or anonymize your personal data within <span class="placeholder">[RETENTION PERIOD, e.g. 30 days]</span>, except where we are legally required to retain certain records for longer (e.g. billing records for partners).</p>
+
+  <h2>5. Security</h2>
+  <p>We apply several technical safeguards specifically designed around the sensitivity of location data: GPS coordinates are randomized before storage (see 2.2); map views suppress statistics for areas with too few contributors to prevent re-identification; access to the database is governed by row-level security policies so, for example, your optional profile details are only ever readable by accepted friends, enforced at the database level, not just hidden in the app. All traffic between your device and our servers is encrypted (HTTPS).</p>
+
+  <h2>6. Your rights</h2>
+  <p>Depending on your location, you have the right to:</p>
+  <ul>
+    <li><strong>Access</strong> the personal data we hold about you.</li>
+    <li><strong>Correct</strong> inaccurate data (most profile fields are editable directly in the app).</li>
+    <li><strong>Delete</strong> your account and associated personal data.</li>
+    <li><strong>Restrict or object to</strong> certain processing.</li>
+    <li><strong>Receive a copy</strong> of your data in a portable format.</li>
+    <li><strong>Withdraw consent</strong> at any time (e.g. by disabling location access, or removing an optional profile field).</li>
+    <li><strong>Lodge a complaint</strong> with your local data protection authority — in Hungary, the <a href="https://naih.hu" target="_blank" rel="noopener">National Authority for Data Protection and Freedom of Information (NAIH)</a>.</li>
+  </ul>
+  <p>To exercise any of these rights, contact us at <a href="mailto:[PRIVACY_EMAIL]" class="placeholder">[PRIVACY CONTACT EMAIL]</a>.</p>
+
+  <h2>7. Children</h2>
+  <p>EmoMap is not directed at children and is intended for users aged <span class="placeholder">[MINIMUM AGE, e.g. 16]</span> and older. We do not knowingly collect personal data from children below this age. If you believe a child has provided us with personal data, please contact us so we can remove it.</p>
+
+  <h2>8. Cookies and local storage</h2>
+  <p>We do not use third-party advertising or tracking cookies. We use your browser's local storage only for your language preference, your login session, and your vote cooldown timer — all strictly necessary for the Service to function, not for tracking or analytics.</p>
+
+  <h2>9. Changes to this policy</h2>
+  <p>We may update this policy as the Service changes. If we make material changes, we will make reasonable efforts to notify active users within the app.</p>
+
+  <footer>
+    EmoMap — <a href="/legal/terms.html">Terms of Service</a> · <a href="mailto:[PRIVACY_EMAIL]" class="placeholder">[PRIVACY CONTACT EMAIL]</a>
+  </footer>
+</div>
+</body>
+</html>

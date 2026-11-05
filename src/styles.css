@@ -550,6 +550,10 @@ button { font-family: inherit; }
 .profile-partner-btn { border-color: #f5b400; color: #f5b400; }
 .profile-partner-btn:hover { background: rgba(245, 180, 0, 0.08); }
 
+.profile-legal-note { margin: 16px 0 0; font-size: 11px; color: var(--fg-dim); text-align: center; }
+.profile-legal-note a { color: var(--fg-dim); }
+.profile-legal-note a:hover { color: var(--fg-muted); }
+
 .profile-logout {
   margin-top: 10px;
   width: 100%;
@@ -1722,6 +1726,16 @@ button { font-family: inherit; }
   text-align: center;
   max-width: 380px;
 }
+
+.auth-legal-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: var(--fg-dim);
+  text-align: center;
+  line-height: 1.5;
+}
+.auth-legal-note a { color: var(--fg-muted); text-decoration: underline; }
+.auth-legal-note a:hover { color: var(--fg); }
 
 /* ── Random Match modal ── */
 .random-match-overlay {
