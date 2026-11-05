@@ -5,7 +5,9 @@ import { supabase } from './supabaseClient';
 import { EMOTIONS } from './emotions';
 
 const RADIUS_METERS = 200;
-const WINDOW_HOURS = 24;
+// 1h: this is displayed as "X% Hype right now" — it was inconsistent with
+// its own label at 24h. Matches the app-wide "live, not stale" window.
+const WINDOW_HOURS = 1;
 const MIN_SAMPLE = 3; // k-anonymity floor, consistent with the rest of the app
 
 export async function fetchVenueMood(lat, lng) {

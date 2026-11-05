@@ -48,10 +48,9 @@ export function usePersonalMood(coords, sessionId) {
       const west = coords.lng - radiusDeg;
       const east = coords.lng + radiusDeg;
 
-      // Without a time bound this summed the area's ENTIRE history, not its
-      // current mood, and got slower forever as the table grew. Matches the
-      // 24h window used everywhere else (useMoodGrid, the mood-grid RPC).
-      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      // 1h — the "personal aura" is supposed to read as the area's mood
+      // RIGHT NOW, same reasoning/window as useMoodGrid and the mood-grid RPC.
+      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
       const { data, error } = await supabase
         .from('emotions')
