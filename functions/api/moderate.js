@@ -103,21 +103,27 @@ export async function onRequestPost(context) {
     // 1. Primary: Cloudflare Workers AI binding (`env.AI`)
     if (env?.AI) {
       try {
-        // Try LLaVA 1.5 7B directly — robust array or base64 input
+        // Simple direct question that works reliably on LLaVA 1.5 7B
+        const prompt = 'Does this image contain explicit female nudity, bare breasts, exposed nipples, genitals, sexual acts, wounds/blood, dead animals, or child distress? Answer with one word: YES or NO.';
         const llavaRes = await env.AI.run('@cf/llava-hf/llava-1.5-7b-hf', {
           image: Array.from(bytes),
-          prompt: MODERATION_PROMPT,
-          max_tokens: 60,
+          prompt: prompt,
+          max_tokens: 30,
         });
-        const textOut = llavaRes?.description || llavaRes?.response || JSON.stringify(llavaRes);
-        const verdict = parseVerdictJson(textOut);
-        if (verdict) {
-          return new Response(
-            JSON.stringify({ ok: true, engine: 'cf-llava-1.5-7b', ...verdict }),
-            { status: 200, headers: { 'Content-Type': 'application/json' } }
-          );
-        }
-        lastError = 'llava_unparseable: ' + textOut;
+        const textOut = (llavaRes?.description || llavaRes?.response || JSON.stringify(llavaRes)).trim();
+        const upper = textOut.toUpperCase();
+        const containsForbidden = upper.includes('YES') || upper.includes('EXPLICIT') || upper.includes('NUDE') || upper.includes('BREAST');
+
+        return new Response(
+          JSON.stringify({
+            ok: true,
+            engine: 'cf-llava-1.5-7b',
+            safe: !containsForbidden,
+            category: containsForbidden ? 'nudity_explicit' : 'clean',
+            raw: textOut,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
       } catch (llavaErr) {
         lastError = 'llava_err: ' + llavaErr?.message;
       }
