@@ -10,9 +10,14 @@
 -- history.)
 --
 -- READ BEFORE RUNNING:
---   1. Replace YOUR_EMOMAP_LOGIN_EMAIL below (one spot) with the email you
---      yourself log into the live EmoMap app with — the demo friends get
---      added as YOUR friends specifically.
+--   1. The login email below is already filled in with
+--      avar.szilveszter@gmail.com (TheCinemaker) — the demo friends get
+--      added as that account's friends specifically. (An earlier revision
+--      of this file told you to replace it in "one spot" — it actually
+--      appeared 5 times, which is almost certainly why the first run left
+--      the Friends list empty: whichever occurrences stayed as the literal
+--      placeholder resolved to no matching account, so those inserts had
+--      nothing to attach to.)
 --   2. This creates real rows directly in auth.users. There's no supported
 --      way to get many distinct, distinguishable user_ids without going
 --      through real signups — this is the standard (if unofficial) trick
@@ -138,7 +143,7 @@ where du.label like 'f%' and du.id = p.id;
 -- Accepted (13)
 insert into public.friendships (requester_id, addressee_id, status, created_at, responded_at)
 select
-  (select id from auth.users where email = 'YOUR_EMOMAP_LOGIN_EMAIL'),
+  (select id from auth.users where email = 'avar.szilveszter@gmail.com'),
   du.id,
   'accepted',
   now() - (v.days_ago || ' days')::interval,
@@ -152,7 +157,7 @@ on conflict (requester_id, addressee_id) do nothing;
 
 -- Incoming requests: them -> you, still pending
 insert into public.friendships (requester_id, addressee_id, status, created_at)
-select du.id, (select id from auth.users where email = 'YOUR_EMOMAP_LOGIN_EMAIL'),
+select du.id, (select id from auth.users where email = 'avar.szilveszter@gmail.com'),
   'pending', now() - (v.hours_ago || ' hours')::interval
 from (values ('f14',2),('f15',6),('f16',20)) as v(label, hours_ago)
 join _demo_users du on du.label = v.label
@@ -160,7 +165,7 @@ on conflict (requester_id, addressee_id) do nothing;
 
 -- Outgoing requests: you -> them, still pending
 insert into public.friendships (requester_id, addressee_id, status, created_at)
-select (select id from auth.users where email = 'YOUR_EMOMAP_LOGIN_EMAIL'), du.id,
+select (select id from auth.users where email = 'avar.szilveszter@gmail.com'), du.id,
   'pending', now() - (v.hours_ago || ' hours')::interval
 from (values ('f17',1),('f18',9)) as v(label, hours_ago)
 join _demo_users du on du.label = v.label
@@ -169,8 +174,8 @@ on conflict (requester_id, addressee_id) do nothing;
 -- ── 4. Chat history with 6 of the accepted friends (rest stay "say hi") ────
 insert into public.messages (sender_id, recipient_id, body, created_at, read_at)
 select
-  case when v.from_me then (select id from auth.users where email = 'YOUR_EMOMAP_LOGIN_EMAIL') else du.id end,
-  case when v.from_me then du.id else (select id from auth.users where email = 'YOUR_EMOMAP_LOGIN_EMAIL') end,
+  case when v.from_me then (select id from auth.users where email = 'avar.szilveszter@gmail.com') else du.id end,
+  case when v.from_me then du.id else (select id from auth.users where email = 'avar.szilveszter@gmail.com') end,
   v.body,
   now() - (v.mins_ago || ' minutes')::interval,
   case when v.from_me then now() - (v.mins_ago || ' minutes')::interval + interval '1 minute' else null end
@@ -187,7 +192,14 @@ from (values
   ('f09', false, 'Szia!', 4320),
   ('f11', true,  'Hali, hogy vagy?', 10)
 ) as v(label, from_me, body, mins_ago)
-join _demo_users du on du.label = v.label;
+join _demo_users du on du.label = v.label
+-- messages has no natural unique key to ON CONFLICT on — skip a friend's
+-- whole demo conversation if any message with them already exists, so
+-- re-running this script doesn't duplicate the chat history.
+where not exists (
+  select 1 from public.messages m
+  where m.sender_id = du.id or m.recipient_id = du.id
+);
 
 -- ── 5. A couple of friends with extra profile details (bio/contact) ────────
 insert into public.profile_details (user_id, full_name, phone, contact_note, visible_fields)
@@ -225,7 +237,8 @@ from (values
   ('f17','motivated',  47.0707, 15.4395, 14),  -- Graz
   ('f18','love',       50.0755, 14.4378,  9)   -- Prague
 ) as v(label, emotion, lat, lng, mins_ago)
-join _demo_users du on du.label = v.label;
+join _demo_users du on du.label = v.label
+where not exists (select 1 from public.emotions e where e.user_id = du.id);
 
 -- Worldwide singles — one lone vote each across every continent
 insert into public.emotions (user_id, session_id, emotion, lat, lng, is_active, inserted_at)
@@ -252,7 +265,8 @@ from (values
   ('w19','bored',     -23.5505, -46.6333, 23),  -- São Paulo
   ('w20','stressed',   40.7128, -74.0060, 14)   -- New York
 ) as v(label, emotion, lat, lng, mins_ago)
-join _demo_users du on du.label = v.label;
+join _demo_users du on du.label = v.label
+where not exists (select 1 from public.emotions e where e.user_id = du.id);
 
 -- Medium "district" cluster — ~500m scatter around Budapest's Deák Ferenc tér
 insert into public.emotions (user_id, session_id, emotion, lat, lng, is_active, inserted_at)
@@ -263,7 +277,8 @@ select du.id, 'demo',
   true,
   now() - (floor(random() * 40) || ' minutes')::interval
 from _demo_users du
-where du.label like 'm%';
+where du.label like 'm%'
+  and not exists (select 1 from public.emotions e where e.user_id = du.id);
 
 -- Dense "packed venue" cluster — ~80m scatter around Kőszeg's Jurisics tér
 insert into public.emotions (user_id, session_id, emotion, lat, lng, is_active, inserted_at)
@@ -274,6 +289,7 @@ select du.id, 'demo',
   true,
   now() - (floor(random() * 40) || ' minutes')::interval
 from _demo_users du
-where du.label like 'c%';
+where du.label like 'c%'
+  and not exists (select 1 from public.emotions e where e.user_id = du.id);
 
 drop table _demo_users;
