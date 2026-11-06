@@ -24,7 +24,7 @@ function formatTimeAgo(iso, t) {
   return `${hours}h`;
 }
 
-export default function PulsesPage({ session, t }) {
+export default function PulsesPage({ session, t, onReady }) {
   const userId = session?.user?.id;
   const [pulses, setPulses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -354,15 +354,28 @@ export default function PulsesPage({ session, t }) {
   };
 
   // ── Upload + AI Image Moderation ("Kép-kukázó") ────────────────────────────
-  const resetComposer = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  const resetComposer = useCallback(() => {
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setSelectedFile(null);
-    setPreviewUrl(null);
     setCaption('');
     setAiStatus(null);
     setAiError(null);
     setUploading(false);
-  };
+  }, []);
+
+  // Exposed to App.jsx so the bottom nav's Pulses-only center button can
+  // open this page's composer without lifting all of its state up a level.
+  const openComposer = useCallback(() => {
+    resetComposer();
+    setComposerOpen(true);
+  }, [resetComposer]);
+
+  useEffect(() => {
+    onReady?.({ openComposer });
+  }, [onReady, openComposer]);
 
   const handleFilePick = (e) => {
     const file = e.target.files?.[0];
@@ -442,7 +455,6 @@ export default function PulsesPage({ session, t }) {
         <div className="pulses-topbar-title">
           <IconBolt className="pulses-bolt" aria-hidden width={18} height={18} />
           <h2>Pulses</h2>
-          <span className="pulses-global-pill">{t('pulses_global_badge')}</span>
         </div>
       </div>
 
@@ -464,10 +476,7 @@ export default function PulsesPage({ session, t }) {
             <button
               type="button"
               className="pulses-create-btn"
-              onClick={() => {
-                resetComposer();
-                setComposerOpen(true);
-              }}
+              onClick={openComposer}
             >
               + {t('pulses_new_btn')}
             </button>
@@ -620,20 +629,6 @@ export default function PulsesPage({ session, t }) {
           );
         })}
       </div>
-
-      {/* Floating + New Pulse action button centered at bottom above bottom-nav */}
-      <button
-        type="button"
-        className="pulses-floating-create-btn"
-        onClick={() => {
-          resetComposer();
-          setComposerOpen(true);
-        }}
-        aria-label={t('pulses_new_btn')}
-      >
-        <IconCamera width={19} height={19} />
-        <span>{t('pulses_new_btn')}</span>
-      </button>
 
       {/* ── Comments Bottom Sheet ───────────────────────────────────────── */}
       {activeCommentReelId && (

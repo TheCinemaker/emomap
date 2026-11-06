@@ -1,8 +1,23 @@
 // src/components/BottomNav.jsx
 // Fixed bottom navigation bar (Map | Pulses | Friends & Chat | Profile).
-export default function BottomNav({ activeTab, onChangeTab, friendsBadgeCount = 0, t }) {
+import { IconCamera } from './Icons';
+
+export default function BottomNav({ activeTab, onChangeTab, friendsBadgeCount = 0, t, onCreatePulse }) {
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
+      {/* Only shown on the Pulses tab itself — raised, centered, bigger than
+          the regular nav icons. Replaces the old floating button that used
+          to hover above this bar. */}
+      {activeTab === 'pulses' && onCreatePulse && (
+        <button
+          type="button"
+          className="bottom-nav-fab"
+          onClick={onCreatePulse}
+          aria-label={t('pulses_new_btn')}
+        >
+          <IconCamera width={24} height={24} />
+        </button>
+      )}
       <button
         type="button"
         className={`bottom-nav-item${activeTab === 'map' ? ' is-active' : ''}`}

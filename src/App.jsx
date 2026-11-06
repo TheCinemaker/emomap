@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { EMOTIONS } from './emotions';
 import { supabase } from './supabaseClient';
 import { MapView } from './MapView';
@@ -99,6 +99,10 @@ export default function App() {
   const [viewVenueId, setViewVenueId] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses' | 'friends'
+  // PulsesPage registers its composer-open function here so the bottom nav's
+  // Pulses-only center button can trigger it without lifting all of that
+  // page's upload/composer state up into App.
+  const pulsesApiRef = useRef(null);
   const [showOwnDetails, setShowOwnDetails] = useState(false);
   const [viewDetailsFor, setViewDetailsFor] = useState(null); // { friendId, friendName } | null
 
@@ -407,7 +411,7 @@ export default function App() {
       )}
 
       {activeTab === 'pulses' && (
-        <PulsesPage session={session} t={t} />
+        <PulsesPage session={session} t={t} onReady={(api) => { pulsesApiRef.current = api; }} />
       )}
 
       {activeTab === 'friends' && (
@@ -553,6 +557,7 @@ export default function App() {
         onChangeTab={handleNavChange}
         friendsBadgeCount={profileBadgeCount}
         t={t}
+        onCreatePulse={() => pulsesApiRef.current?.openComposer()}
       />
     </div>
   );
