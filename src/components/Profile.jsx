@@ -34,7 +34,7 @@ function computeStreak(dates) {
   return streak;
 }
 
-export default function Profile({ userId, lang, setLang, t, onClose, onLogout, onOpenFriends, onOpenDetails, onOpenVenueCRM }) {
+export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFriends, onOpenDetails, onOpenVenueCRM }) {
   const [profile, setProfile] = useState(null);
   const [voteCount, setVoteCount] = useState(null);
   const [streak, setStreak] = useState(null);
@@ -100,10 +100,8 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
     : null;
 
   return (
-    <div className="profile-overlay" onClick={onClose}>
-      <div className="profile-panel" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="profile-close" onClick={onClose}>×</button>
-
+    <section className="profile-page" aria-label="Profile">
+      <div className="profile-card">
         <label className="profile-avatar" title={t('profile_avatar_change')}>
           {profile?.avatar_url ? (
             <img src={profile.avatar_url} alt="" className="profile-avatar-img" />
@@ -163,6 +161,6 @@ export default function Profile({ userId, lang, setLang, t, onClose, onLogout, o
           <a href={lang === 'hu' ? '/legal/adatkezeles.html' : '/legal/privacy.html'} target="_blank" rel="noopener noreferrer">{t('auth_legal_privacy')}</a>
         </p>
       </div>
-    </div>
+    </section>
   );
 }
