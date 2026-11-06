@@ -11,8 +11,9 @@ import { compressImage } from '../imageCompress';
 import { moderateImageFile, warmupModerationModel } from '../imageModeration';
 import { IconUser, IconBolt, IconHeart, IconRepeat, IconTrash, IconFlag, IconCamera, IconCheck, IconClose } from './Icons';
 
-const PULSES_LIMIT = 40;
-const EXPIRES_HOURS = 24;
+const PULSES_LIMIT = 60;
+// Lifetime extended so seeded and uploaded Pulses do not expire
+const EXPIRES_HOURS = 24 * 365 * 10;
 
 const EMOTION_BY_ID = EMOTIONS.reduce((acc, e) => ({ ...acc, [e.id]: e }), {});
 
@@ -67,11 +68,9 @@ export default function PulsesPage({ session, t, onReady }) {
 
   // ── Fetch Pulses & Social Counts ───────────────────────────────────────────
   const fetchPulses = useCallback(async () => {
-    const nowIso = new Date().toISOString();
     const { data, error } = await supabase
       .from('reels')
       .select('id, image_url, caption, emotion, created_at, user_id')
-      .gt('expires_at', nowIso)
       .order('created_at', { ascending: false })
       .limit(PULSES_LIMIT);
 
@@ -81,7 +80,6 @@ export default function PulsesPage({ session, t, onReady }) {
       const fallback = await supabase
         .from('reels')
         .select('id, image_url, created_at, user_id')
-        .gt('expires_at', nowIso)
         .order('created_at', { ascending: false })
         .limit(PULSES_LIMIT);
       rows = fallback.data || [];

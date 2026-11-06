@@ -97,8 +97,7 @@ export default function App() {
   const [showShareCard, setShowShareCard] = useState(false);
   const [showVenueCRM, setShowVenueCRM] = useState(false);
   const [viewVenueId, setViewVenueId] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses' | 'friends'
+  const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses' | 'friends' | 'profile'
   // PulsesPage registers its composer-open function here so the bottom nav's
   // Pulses-only center button can trigger it without lifting all of that
   // page's upload/composer state up into App.
@@ -315,17 +314,10 @@ export default function App() {
   const handleLogout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
   const handleNavChange = useCallback((tab) => {
-    if (tab === 'map' || tab === 'pulses' || tab === 'friends') {
-      setShowProfile(false);
-      setActiveTab(tab);
-    } else if (tab === 'profile') {
-      setShowProfile((prev) => !prev);
-    }
+    setActiveTab(tab);
   }, []);
 
   if (!session) return <Auth />;
-
-  const currentNavTab = showProfile ? 'profile' : activeTab;
 
   const promptText =
     !gpsAllowed ? t('vote_prompt_need_location')
@@ -383,17 +375,16 @@ export default function App() {
         <ShareCard userId={userId} lang={lang} t={t} onClose={() => setShowShareCard(false)} />
       )}
 
-      {showProfile && (
+      {activeTab === 'profile' && (
         <Profile
           userId={userId}
           lang={lang}
           setLang={setLang}
           t={t}
-          onClose={() => setShowProfile(false)}
           onLogout={handleLogout}
-          onOpenFriends={() => { setShowProfile(false); setActiveTab('friends'); }}
-          onOpenDetails={() => { setShowProfile(false); setShowOwnDetails(true); }}
-          onOpenVenueCRM={() => { setShowProfile(false); setShowVenueCRM(true); }}
+          onOpenFriends={() => setActiveTab('friends')}
+          onOpenDetails={() => setShowOwnDetails(true)}
+          onOpenVenueCRM={() => setShowVenueCRM(true)}
         />
       )}
 
@@ -553,7 +544,7 @@ export default function App() {
       )}
 
       <BottomNav
-        activeTab={currentNavTab}
+        activeTab={activeTab}
         onChangeTab={handleNavChange}
         friendsBadgeCount={profileBadgeCount}
         t={t}

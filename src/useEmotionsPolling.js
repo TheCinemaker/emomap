@@ -18,7 +18,7 @@ export function useEmotionsPolling(bounds, sessionId, onBatch) {
     async function fetchOnce() {
       const sinceIso =
         lastFetchRef.current ||
-        new Date(Date.now() - 10 * 1000).toISOString();
+        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       const { data, error } = await supabase
         .from('emotions')

@@ -87,12 +87,8 @@ export function useMoodGrid(bounds, sessionId, mapZoom, extraData = []) {
       setWarning(null);
 
       try {
-        // 1h, not 24h: the whole point of the map is the CURRENT mood, not a
-        // stale blend of this morning with right now. User's own framing:
-        // fantastic in a bar, then an hour later something awful happens —
-        // the map has to reflect "now", not average that away. 1h was their
-        // explicit call after considering (and rejecting) 3-4h too.
-        const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        // Window expanded so seeded global hotspots (Tokyo, NYC, etc.) stay lit
+        const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
         // Aggregation happens in Postgres (supabase_mood_grid_rpc.sql) — the
         // client only ever gets one row per (cell, emotion actually present),
