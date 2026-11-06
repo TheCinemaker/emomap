@@ -11,7 +11,7 @@
 --
 -- READ BEFORE RUNNING:
 --   1. The login email below is already filled in with
---      avar.szilveszter@gmail.com (TheCinemaker) — the demo friends get
+--      koszegfotok@gmail.com (TheCinemaker) — the demo friends get
 --      added as that account's friends specifically. (An earlier revision
 --      of this file told you to replace it in "one spot" — it actually
 --      appeared 5 times, which is almost certainly why the first run left
@@ -143,7 +143,7 @@ where du.label like 'f%' and du.id = p.id;
 -- Accepted (13)
 insert into public.friendships (requester_id, addressee_id, status, created_at, responded_at)
 select
-  (select id from auth.users where email = 'avar.szilveszter@gmail.com'),
+  (select id from auth.users where email = 'koszegfotok@gmail.com'),
   du.id,
   'accepted',
   now() - (v.days_ago || ' days')::interval,
@@ -157,7 +157,7 @@ on conflict (requester_id, addressee_id) do nothing;
 
 -- Incoming requests: them -> you, still pending
 insert into public.friendships (requester_id, addressee_id, status, created_at)
-select du.id, (select id from auth.users where email = 'avar.szilveszter@gmail.com'),
+select du.id, (select id from auth.users where email = 'koszegfotok@gmail.com'),
   'pending', now() - (v.hours_ago || ' hours')::interval
 from (values ('f14',2),('f15',6),('f16',20)) as v(label, hours_ago)
 join _demo_users du on du.label = v.label
@@ -165,7 +165,7 @@ on conflict (requester_id, addressee_id) do nothing;
 
 -- Outgoing requests: you -> them, still pending
 insert into public.friendships (requester_id, addressee_id, status, created_at)
-select (select id from auth.users where email = 'avar.szilveszter@gmail.com'), du.id,
+select (select id from auth.users where email = 'koszegfotok@gmail.com'), du.id,
   'pending', now() - (v.hours_ago || ' hours')::interval
 from (values ('f17',1),('f18',9)) as v(label, hours_ago)
 join _demo_users du on du.label = v.label
@@ -174,8 +174,8 @@ on conflict (requester_id, addressee_id) do nothing;
 -- ── 4. Chat history with 6 of the accepted friends (rest stay "say hi") ────
 insert into public.messages (sender_id, recipient_id, body, created_at, read_at)
 select
-  case when v.from_me then (select id from auth.users where email = 'avar.szilveszter@gmail.com') else du.id end,
-  case when v.from_me then du.id else (select id from auth.users where email = 'avar.szilveszter@gmail.com') end,
+  case when v.from_me then (select id from auth.users where email = 'koszegfotok@gmail.com') else du.id end,
+  case when v.from_me then du.id else (select id from auth.users where email = 'koszegfotok@gmail.com') end,
   v.body,
   now() - (v.mins_ago || ' minutes')::interval,
   case when v.from_me then now() - (v.mins_ago || ' minutes')::interval + interval '1 minute' else null end
