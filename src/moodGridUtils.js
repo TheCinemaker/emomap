@@ -53,14 +53,18 @@ const CAL_ZOOM_BAR = 18;
 const CAL_SIZE_BAR_DEG = 0.00011; // ~12m
 
 export function calculateCellSize(zoomLevel) {
-  const t = (zoomLevel - CAL_ZOOM_CITY) / (CAL_ZOOM_BAR - CAL_ZOOM_CITY);
+  // t is only calibrated for the [CAL_ZOOM_CITY, CAL_ZOOM_BAR] range — left
+  // unclamped, zooming out further than "city" (e.g. a whole-continent
+  // default view at zoom 4-5) drove t negative and the log-linear curve
+  // extrapolated exponentially past the city size, hitting the old 10deg
+  // safety clamp: a single vote rendered as a circle swallowing half of
+  // Europe. Clamping t to [0, 1] caps the size at the two calibration
+  // points themselves — city-level (~37km) is already the intended "one
+  // big pulse" look for a zoomed-out view, it should never grow past that
+  // no matter how far out the camera goes.
+  const t = Math.max(0, Math.min(1, (zoomLevel - CAL_ZOOM_CITY) / (CAL_ZOOM_BAR - CAL_ZOOM_CITY)));
   const logSize = Math.log(CAL_SIZE_CITY_DEG) + t * (Math.log(CAL_SIZE_BAR_DEG) - Math.log(CAL_SIZE_CITY_DEG));
-  const size = Math.exp(logSize);
-  // Lower floor ~0.0001deg (~11m, the GPS jitter radius — no point
-  // resolving finer than the jitter noise itself). MAX_RENDERED_CELLS is
-  // the actual safety net against cell-count blowup at a 10,000-person
-  // event, not this floor, so it's safe to let cells get this small.
-  return Math.max(0.0001, Math.min(10, size));
+  return Math.exp(logSize);
 }
 
 // Formerly a k-anonymity floor requiring >=3 votes in a small cell before
