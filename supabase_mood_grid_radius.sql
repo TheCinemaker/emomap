@@ -19,6 +19,10 @@
 --
 -- Idempotent: safe to run multiple times.
 
+-- CREATE OR REPLACE can't change a function's return row shape (adding the
+-- new radius_m column counts as that) — Postgres requires a DROP first.
+drop function if exists public.get_mood_grid(numeric, numeric, numeric, numeric, numeric, timestamptz);
+
 create or replace function public.get_mood_grid(
   p_south numeric,
   p_north numeric,
