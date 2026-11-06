@@ -47,10 +47,15 @@ export function cellIntensity(total) {
 // beyond) them gets both ends right at once: z10 ≈ a whole big city
 // (~37km, reads as one or few blobs), z18 ≈ individual-person resolution
 // (~12m, a single bar/stage separates into distinct dots).
+// 2026-11-06: user reported the whole curve still reads as too big in
+// practice (incl. the clamped city-scale end) — both reference points
+// scaled to 1/4 of their original size. Scaling both endpoints by the same
+// factor scales the entire log-linear curve by that same factor at every
+// zoom level, not just the ends.
 const CAL_ZOOM_CITY = 10;
-const CAL_SIZE_CITY_DEG = 0.33;   // ~37km
+const CAL_SIZE_CITY_DEG = 0.0825;   // ~9km (was 0.33 / ~37km)
 const CAL_ZOOM_BAR = 18;
-const CAL_SIZE_BAR_DEG = 0.00011; // ~12m
+const CAL_SIZE_BAR_DEG = 0.0000275; // ~3m (was 0.00011 / ~12m)
 
 export function calculateCellSize(zoomLevel) {
   // t is only calibrated for the [CAL_ZOOM_CITY, CAL_ZOOM_BAR] range — left
