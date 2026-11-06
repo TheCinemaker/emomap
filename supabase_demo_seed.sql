@@ -115,7 +115,11 @@ ins as (
     jsonb_build_object('username', d.username, 'is_demo', true),
     now(), now(), '', '', '', ''
   from demo_defs d
-  on conflict (email) do nothing
+  -- auth.users has no plain unique constraint on email (Supabase's real
+  -- constraint is a partial unique index scoped to is_sso_user = false),
+  -- so ON CONFLICT (email) errors with 42P10. A plain existence check
+  -- gets the same idempotency without depending on that index's exact shape.
+  where not exists (select 1 from auth.users u where u.email = d.email)
   returning id, email
 )
 insert into _demo_users (label, id)
