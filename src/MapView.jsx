@@ -295,18 +295,20 @@ export function MapView({
     moodGridCells?.forEach(cell => {
       const key = cell.key;
       visibleKeys.add(key);
-      // Size the glow to the cell's ACTUAL real-world footprint (cell.size is in
-      // degrees), not a hardcoded 20km — at low zoom cells are tens to hundreds
-      // of km wide, so a fixed 20km glow renders as a tiny hard dot instead of
-      // the intended soft, overlapping "weather" blob. Lowered from 1.4x to
-      // 1.15x: the CSS gradient now has a solid core out to 45% instead of
-      // fading from the center, so cells no longer need as much extra padding
-      // to read as "connected" — and a bar-level dot is supposed to look like
-      // a tiny dot, not an oversized overlapping smudge.
-      const cellMeters = (cell.size || 0.01) * 111000;
-      // Floor at 14px — now that cells can shrink to ~11m (see
-      // calculateCellSize), a single person at a deep building-level zoom
-      // must still render as a visible soft dot, not a sub-pixel speck.
+      // Render size now tracks the cell's ACTUAL GPS spread, not the zoom-
+      // level clustering bucket (2026-11-06 fix): a lone vote is always a
+      // fixed 5m real-world dot (AURA_POINT_RADIUS_M in moodGridUtils.js),
+      // and a cluster's radius is however far its farthest member sits from
+      // the group's centroid, plus that same 5m halo. Because this is a
+      // real meters value fed through metersToPixels, it naturally shrinks
+      // on screen as you zoom out (a fixed-size real-world object always
+      // does) instead of growing to fill the zoomed-out view. Falls back to
+      // the old size-derived estimate only if radiusMeters is somehow
+      // missing (e.g. mid-rollout before the RPC migration lands).
+      const radiusMeters = cell.radiusMeters ?? ((cell.size || 0.01) * 111000) / 2;
+      const cellMeters = radiusMeters * 2;
+      // Floor at 14px — a single person's 5m dot must still render as a
+      // visible soft dot at any zoom, not a sub-pixel speck.
       const px = Math.max(14, metersToPixels(cell.lat, zoom, cellMeters * 1.15));
       // Blur proportional to the cell's own pixel size instead of a fixed
       // 30px — a fixed blur drowned small, zoomed-in dots into a blob much

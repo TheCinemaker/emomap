@@ -12,7 +12,16 @@ function rowsToCells(rows, cellSizeDeg) {
   for (const row of rows) {
     let cell = byKey.get(row.cell_key);
     if (!cell) {
-      cell = { lat: Number(row.center_lat), lng: Number(row.center_lng), total: Number(row.cell_total), emotionCounts: {} };
+      cell = {
+        lat: Number(row.center_lat),
+        lng: Number(row.center_lng),
+        total: Number(row.cell_total),
+        // row.radius_m is only present once get_mood_grid has been migrated
+        // (supabase_mood_grid_radius.sql) — fall back to the old cell-size-
+        // based estimate so the map doesn't break mid-rollout.
+        radiusMeters: row.radius_m != null ? Number(row.radius_m) : (cellSizeDeg * 111000) / 2,
+        emotionCounts: {},
+      };
       byKey.set(row.cell_key, cell);
     }
     cell.emotionCounts[row.emotion] = Number(row.emotion_count);
@@ -35,6 +44,7 @@ function rowsToCells(rows, cellSizeDeg) {
       color: `rgb(${Math.round(rSum)}, ${Math.round(gSum)}, ${Math.round(bSum)})`,
       total: cell.total,
       intensity: cellIntensity(cell.total),
+      radiusMeters: cell.radiusMeters,
       size: cellSizeDeg,
       key,
     });

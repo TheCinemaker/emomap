@@ -17,6 +17,23 @@ export const EMOTION_RGB = EMOTIONS.reduce(
   {}
 );
 
+// A single vote's own fixed real-world halo (2026-11-06, user's explicit
+// spec): "ha a legjobban belezoom-olok, maximum 5 méteres lehet az aurám" —
+// a lone vote is ALWAYS a tiny 5m dot, never bigger, no matter the zoom
+// level. When several votes land in the same grid bucket, the group's
+// rendered radius is the farthest member's distance from the group's own
+// centroid plus this halo — "mindenki 5 métereset kap, a kör szélén állók
+// határozzák meg az aura méretét" — so size reflects how far the actual
+// GPS points are spread out, not an arbitrary zoom-tied constant.
+const AURA_POINT_RADIUS_M = 5;
+const METERS_PER_DEG_LAT = 111320;
+
+function metersBetween(lat1, lng1, lat2, lng2) {
+  const dy = (lat1 - lat2) * METERS_PER_DEG_LAT;
+  const dx = (lng1 - lng2) * METERS_PER_DEG_LAT * Math.cos((lat1 * Math.PI) / 180);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 // Hard safety ceiling on rendered cells, independent of how much underlying
 // data exists. Each cell becomes a real DOM node with a blur() filter and a
 // running animation — that doesn't scale by itself, no matter how few grid
@@ -57,6 +74,13 @@ const CAL_SIZE_CITY_DEG = 0.0825;   // ~9km (was 0.33 / ~37km)
 const CAL_ZOOM_BAR = 18;
 const CAL_SIZE_BAR_DEG = 0.0000275; // ~3m (was 0.00011 / ~12m)
 
+// NOTE: this only controls the CLUSTERING bucket — how close two votes need
+// to be before they're merged into one group as you zoom in/out. It no
+// longer drives the rendered size directly; buildGridCells below computes
+// that from the actual spread of points inside each bucket (see
+// AURA_POINT_RADIUS_M above). A bucket can be city-sized at a low zoom
+// without the rendered aura itself being city-sized — it only grows that
+// big if real votes are actually spread across the city.
 export function calculateCellSize(zoomLevel) {
   // t is only calibrated for the [CAL_ZOOM_CITY, CAL_ZOOM_BAR] range — left
   // unclamped, zooming out further than "city" (e.g. a whole-continent
@@ -101,12 +125,13 @@ export function buildGridCells(rows, cellSizeDeg) {
 
     let cell = grid.get(key);
     if (!cell) {
-      cell = { latSum: 0, lngSum: 0, count: 0, emotionCounts: {} };
+      cell = { latSum: 0, lngSum: 0, count: 0, emotionCounts: {}, points: [] };
       grid.set(key, cell);
     }
     cell.latSum += lat;
     cell.lngSum += lng;
     cell.count += 1;
+    cell.points.push([lat, lng]);
     cell.emotionCounts[row.emotion] = (cell.emotionCounts[row.emotion] || 0) + 1;
   }
 
@@ -128,12 +153,19 @@ export function buildGridCells(rows, cellSizeDeg) {
       bSum += rgb[2] * weight;
     }
 
+    let maxDistM = 0;
+    for (const [plat, plng] of cell.points) {
+      const d = metersBetween(lat, lng, plat, plng);
+      if (d > maxDistM) maxDistM = d;
+    }
+
     result.push({
       lat,
       lng,
       color: `rgb(${Math.round(rSum)}, ${Math.round(gSum)}, ${Math.round(bSum)})`,
       total,
       intensity: cellIntensity(total),
+      radiusMeters: maxDistM + AURA_POINT_RADIUS_M,
       size: cellSizeDeg,
       key,
     });
