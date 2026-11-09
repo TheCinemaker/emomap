@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { LANGUAGES } from '../i18n';
 import { IconUser, IconPencil, IconFire, IconBuilding } from './Icons';
-import { compressImage } from '../imageCompress';
+import AvatarCropper from './AvatarCropper';
 
 const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US', ja: 'ja-JP' };
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,6 +40,7 @@ export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFrie
   const [streak, setStreak] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  const [cropFile, setCropFile] = useState(null); // picked File awaiting crop, or null
 
   useEffect(() => {
     let cancelled = false;
@@ -60,19 +61,33 @@ export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFrie
     return () => { cancelled = true; };
   }, [userId]);
 
-  const handleAvatarChange = async (e) => {
+  // File picked — opens the crop step (AvatarCropper) instead of
+  // uploading immediately. User's explicit ask (2026-11-09): "a
+  // profilképet ugy kell tudni feltölteni, hogy bele tudjam huzni pont a
+  // körbe" (be able to drag the photo so it sits exactly in the circle).
+  const handleFilePick = (e) => {
     const file = e.target.files?.[0];
-    if (!file || !userId) return;
+    e.target.value = null;
+    if (!file) return;
+    setCropFile(file);
+  };
 
+  const handleCropCancel = () => setCropFile(null);
+
+  // AvatarCropper already exports a correctly-sized, compressed square
+  // JPEG blob matching exactly what the user framed in the circle — no
+  // separate compressImage step needed here.
+  const handleCropConfirm = async (blob) => {
+    setCropFile(null);
+    if (!userId) return;
     setUploading(true);
     setError(null);
     try {
-      const compressed = await compressImage(file, { maxDim: 600, quality: 0.85 });
       const path = `${userId}/avatar.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+        .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -91,7 +106,6 @@ export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFrie
       setError(err.message || t('profile_avatar_error'));
     } finally {
       setUploading(false);
-      e.target.value = null;
     }
   };
 
@@ -109,8 +123,12 @@ export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFrie
             <IconUser className="profile-avatar-fallback" width={40} height={40} aria-hidden />
           )}
           <span className="profile-avatar-edit">{uploading ? '…' : <IconPencil width={14} height={14} />}</span>
-          <input type="file" accept="image/*" onChange={handleAvatarChange} disabled={uploading} />
+          <input type="file" accept="image/*" onChange={handleFilePick} disabled={uploading} />
         </label>
+
+        {cropFile && (
+          <AvatarCropper file={cropFile} t={t} onCancel={handleCropCancel} onConfirm={handleCropConfirm} />
+        )}
 
         <h2 className="profile-username">{profile?.username || '—'}</h2>
         {memberSince && <p className="profile-meta">{t('profile_member_since', { date: memberSince })}</p>}

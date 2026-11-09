@@ -371,8 +371,12 @@ export default function App() {
                 className="app-pill-btn"
                 onClick={() => setShowShareCard(true)}
               >
+                {/* A weekly-trend glyph (not a generic "share" icon — the
+                    old one didn't read as "your mood recap" at all) */}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a2.99 2.99 0 1 0-1.96-2.8c0 .3.05.58.14.85L7.1 9.35a2.99 2.99 0 1 0 0 5.3l7.04 4.1c-.09.28-.14.56-.14.85a2.99 2.99 0 1 0 2.99-3.52Z"/>
+                  <rect x="4" y="13" width="3.2" height="7" rx="1.2"/>
+                  <rect x="10.4" y="8.5" width="3.2" height="11.5" rx="1.2"/>
+                  <rect x="16.8" y="4" width="3.2" height="16" rx="1.2"/>
                 </svg>
                 <span>{t('share_card_open')}</span>
               </button>

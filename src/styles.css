@@ -1819,6 +1819,20 @@ button { font-family: inherit; }
   backdrop-filter: blur(14px);
 }
 
+.avatar-cropper-card { align-items: center; display: flex; flex-direction: column; text-align: center; }
+.avatar-cropper-viewport {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border-strong);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: grab;
+  touch-action: none;
+  margin-bottom: 18px;
+}
+.avatar-cropper-viewport:active { cursor: grabbing; }
+.avatar-cropper-zoom { width: 100%; max-width: 240px; margin-bottom: 20px; accent-color: var(--accent); }
+
 .auth-lang-row { display: flex; justify-content: flex-end; gap: 6px; margin-bottom: 12px; }
 
 .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
