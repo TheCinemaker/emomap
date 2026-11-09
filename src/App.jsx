@@ -334,15 +334,14 @@ export default function App() {
   const handleLogout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
   const handleNavChange = useCallback((tab) => {
-    // Friends and Profile are inherently account-bound — nothing to show a
-    // guest — so those two prompt sign-in instead of switching tabs. Map
-    // and Moments stay open to everyone.
-    if (!userId && (tab === 'friends' || tab === 'profile')) {
-      setShowAuthPrompt(true);
-      return;
-    }
+    // Friends/Profile DO switch tabs even for a guest now — they land on a
+    // small "sign in required" placeholder (rendered below) instead of the
+    // real page, with the bottom nav still fully visible underneath. A
+    // full-screen Auth modal here was a dead end: it covers the whole
+    // viewport INCLUDING the bottom nav, so there was no way back to Map
+    // except the tiny close button — exactly the "trapped" bug reported.
     setActiveTab(tab);
-  }, [userId]);
+  }, []);
 
   const promptText =
     !gpsAllowed ? t('vote_prompt_need_location')
@@ -418,16 +417,20 @@ export default function App() {
       )}
 
       {activeTab === 'profile' && (
-        <Profile
-          userId={userId}
-          lang={lang}
-          setLang={setLang}
-          t={t}
-          onLogout={handleLogout}
-          onOpenFriends={() => setActiveTab('friends')}
-          onOpenDetails={() => setShowOwnDetails(true)}
-          onOpenVenueCRM={() => setShowVenueCRM(true)}
-        />
+        userId ? (
+          <Profile
+            userId={userId}
+            lang={lang}
+            setLang={setLang}
+            t={t}
+            onLogout={handleLogout}
+            onOpenFriends={() => setActiveTab('friends')}
+            onOpenDetails={() => setShowOwnDetails(true)}
+            onOpenVenueCRM={() => setShowVenueCRM(true)}
+          />
+        ) : (
+          <GuestGate t={t} onSignIn={() => setShowAuthPrompt(true)} />
+        )
       )}
 
       {showOwnDetails && (
@@ -444,16 +447,25 @@ export default function App() {
       )}
 
       {activeTab === 'pulses' && (
-        <PulsesPage session={session} t={t} onReady={(api) => { pulsesApiRef.current = api; }} />
+        <PulsesPage
+          session={session}
+          t={t}
+          onReady={(api) => { pulsesApiRef.current = api; }}
+          onRequireAuth={() => setShowAuthPrompt(true)}
+        />
       )}
 
       {activeTab === 'friends' && (
-        <FriendsPage
-          userId={userId}
-          t={t}
-          onlineIds={onlineIds}
-          onOpenDetails={(friendId, friendName) => setViewDetailsFor({ friendId, friendName })}
-        />
+        userId ? (
+          <FriendsPage
+            userId={userId}
+            t={t}
+            onlineIds={onlineIds}
+            onOpenDetails={(friendId, friendName) => setViewDetailsFor({ friendId, friendName })}
+          />
+        ) : (
+          <GuestGate t={t} onSignIn={() => setShowAuthPrompt(true)} />
+        )
       )}
 
       <main className="app-map-area" style={{ display: activeTab === 'map' ? undefined : 'none' }}>
@@ -590,8 +602,23 @@ export default function App() {
         onChangeTab={handleNavChange}
         friendsBadgeCount={profileBadgeCount}
         t={t}
-        onCreatePulse={() => (userId ? pulsesApiRef.current?.openComposer() : setShowAuthPrompt(true))}
+        onCreatePulse={() => pulsesApiRef.current?.openComposer()}
       />
     </div>
+  );
+}
+
+// Shown in place of Friends/Profile for a guest — the bottom nav stays
+// fully visible and usable above it (unlike the Auth overlay, which
+// covers the whole screen), so tapping back to Map always just works.
+function GuestGate({ t, onSignIn }) {
+  return (
+    <section className="guest-gate" aria-label="Sign in required">
+      <IconGlobe className="guest-gate-icon" aria-hidden width={36} height={36} />
+      <p className="guest-gate-text">{t('auth_tagline_signin')}</p>
+      <button type="button" className="guest-gate-btn" onClick={onSignIn}>
+        {t('auth_submit_signin')}
+      </button>
+    </section>
   );
 }

@@ -28,7 +28,7 @@ function formatTimeAgo(iso, t) {
   return `${hours}h`;
 }
 
-export default function PulsesPage({ session, t, onReady }) {
+export default function PulsesPage({ session, t, onReady, onRequireAuth }) {
   const userId = session?.user?.id;
   const [pulses, setPulses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -190,7 +190,7 @@ export default function PulsesPage({ session, t, onReady }) {
 
   // ── Like / Double-tap ──────────────────────────────────────────────────────
   const toggleLike = async (reelId, forceLike = false) => {
-    if (!userId) return;
+    if (!userId) { onRequireAuth?.(); return; }
     const currentlyLiked = !!likedByMe[reelId];
     if (forceLike && currentlyLiked) return;
 
@@ -220,7 +220,7 @@ export default function PulsesPage({ session, t, onReady }) {
 
   // ── Repost ─────────────────────────────────────────────────────────────────
   const toggleRepost = async (reelId) => {
-    if (!userId) return;
+    if (!userId) { onRequireAuth?.(); return; }
     const currentlyReposted = !!repostedByMe[reelId];
     const nextReposted = !currentlyReposted;
 
@@ -266,7 +266,8 @@ export default function PulsesPage({ session, t, onReady }) {
   };
 
   const handleReport = async (reelId) => {
-    if (!userId || reportedByMe[reelId]) return;
+    if (!userId) { onRequireAuth?.(); return; }
+    if (reportedByMe[reelId]) return;
     setReportedByMe((prev) => ({ ...prev, [reelId]: true }));
     await supabase.from('reel_reports').insert({
       reel_id: reelId,
@@ -314,7 +315,8 @@ export default function PulsesPage({ session, t, onReady }) {
   const handleSendComment = async (e) => {
     e.preventDefault();
     const text = commentDraft.trim();
-    if (!text || !userId || !activeCommentReelId) return;
+    if (!text || !activeCommentReelId) return;
+    if (!userId) { onRequireAuth?.(); return; }
     setCommentSending(true);
     setCommentDraft('');
 
@@ -372,10 +374,14 @@ export default function PulsesPage({ session, t, onReady }) {
 
   // Exposed to App.jsx so the bottom nav's Pulses-only center button can
   // open this page's composer without lifting all of its state up a level.
+  // Guests can view the whole feed, but posting needs an account — this is
+  // the one place that gate lives, so every entry point (the nav FAB, the
+  // empty-state button below) gets it for free.
   const openComposer = useCallback(() => {
+    if (!userId) { onRequireAuth?.(); return; }
     resetComposer();
     setComposerOpen(true);
-  }, [resetComposer]);
+  }, [resetComposer, userId, onRequireAuth]);
 
   useEffect(() => {
     onReady?.({ openComposer });

@@ -1742,6 +1742,34 @@ button { font-family: inherit; }
   color: var(--fg);
 }
 
+/* Guest placeholder for Friends/Profile — bottom nav stays visible above
+   it, so there's always an obvious way back to Map/Moments. */
+.guest-gate {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: var(--bg, #05060a);
+  color: var(--fg-muted);
+}
+.guest-gate-icon { color: var(--fg-dim); }
+.guest-gate-text { margin: 0; font-size: 15px; color: var(--fg); }
+.guest-gate-btn {
+  padding: 11px 28px;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .auth-close {
   position: absolute;
   top: 12px;
