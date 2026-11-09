@@ -88,7 +88,7 @@ begin
       es.emotion,
       es.cnt,
       cs.total,
-      (cs.radius_m + 5)
+      (cs.radius_m + 5)::numeric
     from emotion_stats es
     join cell_stats cs on cs.gx = es.gx and cs.gy = es.gy
     order by cs.total desc
