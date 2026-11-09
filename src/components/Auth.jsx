@@ -5,7 +5,7 @@ import { IconGlobe, IconCheck, IconClose, IconGoogle, IconApple } from './Icons'
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,20}$/;
 
-export default function Auth() {
+export default function Auth({ onClose } = {}) {
   const { lang, setLang, t } = useLang();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -150,8 +150,13 @@ export default function Auth() {
   );
 
   return (
-    <div className="auth-screen">
-      <div className="auth-card">
+    <div className="auth-screen" onClick={onClose}>
+      <div className="auth-card" onClick={(e) => e.stopPropagation()}>
+        {onClose && (
+          <button type="button" className="auth-close" onClick={onClose} aria-label={t('close')}>
+            <IconClose width={16} height={16} />
+          </button>
+        )}
         <div className="auth-lang-row">
           {LANGUAGES.map((code) => (
             <button

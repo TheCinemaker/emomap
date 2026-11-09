@@ -98,6 +98,13 @@ export default function App() {
   const [showVenueCRM, setShowVenueCRM] = useState(false);
   const [viewVenueId, setViewVenueId] = useState(null);
   const [activeTab, setActiveTab] = useState('map'); // 'map' | 'pulses' | 'friends' | 'profile'
+  // Guest mode (2026-11-09, Gemini review caught a real launch-blocker): the
+  // Map and Moments feed must be viewable WITHOUT an account — a Reddit/
+  // social-media visitor clicking the link to an immediate login form
+  // bounces instantly. Auth now renders as a dismissible overlay, only
+  // triggered on demand (voting, posting, Friends/Profile, the nav's own
+  // "Sign in" button) instead of blocking the entire app up front.
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   // PulsesPage registers its composer-open function here so the bottom nav's
   // Pulses-only center button can trigger it without lifting all of that
   // page's upload/composer state up into App.
@@ -213,10 +220,20 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUserId(session ? session.user.id : null);
+      // Logging out while on an account-only tab would otherwise leave a
+      // guest stranded on a now-empty Friends/Profile page.
+      if (!session) setActiveTab((tab) => (tab === 'friends' || tab === 'profile' ? 'map' : tab));
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Auto-dismiss the sign-in overlay the moment it actually succeeds,
+  // instead of leaving a guest staring at their own freshly-loaded map
+  // behind a login form they already got past.
+  useEffect(() => {
+    if (userId) setShowAuthPrompt(false);
+  }, [userId]);
 
   const msSinceLastVote = useMemo(() => {
     if (!lastVoteAt) return Infinity;
@@ -226,7 +243,10 @@ export default function App() {
   const canVote = gpsAllowed === true && msSinceLastVote >= RATE_LIMIT_MS;
 
   const handleVote = useCallback(async (emotionId) => {
-    if (!canVote || !coords || !userId) return;
+    // Guests can watch the live map, but voting needs an account — prompt
+    // sign-in right at the moment of intent instead of silently no-oping.
+    if (!userId) { setShowAuthPrompt(true); return; }
+    if (!canVote || !coords) return;
 
     const tempId = `user_${userId}_${Date.now()}`;
     const { lat, lng } = jitterCoords(coords.lat, coords.lng);
@@ -314,10 +334,15 @@ export default function App() {
   const handleLogout = useCallback(async () => { await supabase.auth.signOut(); }, []);
 
   const handleNavChange = useCallback((tab) => {
+    // Friends and Profile are inherently account-bound — nothing to show a
+    // guest — so those two prompt sign-in instead of switching tabs. Map
+    // and Moments stay open to everyone.
+    if (!userId && (tab === 'friends' || tab === 'profile')) {
+      setShowAuthPrompt(true);
+      return;
+    }
     setActiveTab(tab);
-  }, []);
-
-  if (!session) return <Auth />;
+  }, [userId]);
 
   const promptText =
     !gpsAllowed ? t('vote_prompt_need_location')
@@ -335,16 +360,29 @@ export default function App() {
               <IconGlobe className="app-brand-icon" aria-hidden width={22} height={22} />
               <h1 className="app-brand-name">Pulse</h1>
             </div>
-            <button
-              type="button"
-              className="app-pill-btn"
-              onClick={() => setShowShareCard(true)}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a2.99 2.99 0 1 0-1.96-2.8c0 .3.05.58.14.85L7.1 9.35a2.99 2.99 0 1 0 0 5.3l7.04 4.1c-.09.28-.14.56-.14.85a2.99 2.99 0 1 0 2.99-3.52Z"/>
-              </svg>
-              <span>{t('share_card_open')}</span>
-            </button>
+            {userId ? (
+              <button
+                type="button"
+                className="app-pill-btn"
+                onClick={() => setShowShareCard(true)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a3 3 0 0 0 0-1.4l7.05-4.11a2.99 2.99 0 1 0-1.96-2.8c0 .3.05.58.14.85L7.1 9.35a2.99 2.99 0 1 0 0 5.3l7.04 4.1c-.09.28-.14.56-.14.85a2.99 2.99 0 1 0 2.99-3.52Z"/>
+                </svg>
+                <span>{t('share_card_open')}</span>
+              </button>
+            ) : (
+              // Guest browsing the live map with no account yet — the one
+              // always-visible, proactive way in, instead of only ever
+              // reacting to a blocked action.
+              <button
+                type="button"
+                className="app-pill-btn"
+                onClick={() => setShowAuthPrompt(true)}
+              >
+                <span>{t('auth_submit_signin')}</span>
+              </button>
+            )}
             <button
               type="button"
               className={`app-icon-btn${showReplay ? ' is-active' : ''}`}
@@ -373,6 +411,10 @@ export default function App() {
 
       {showShareCard && (
         <ShareCard userId={userId} lang={lang} t={t} onClose={() => setShowShareCard(false)} />
+      )}
+
+      {showAuthPrompt && (
+        <Auth onClose={() => setShowAuthPrompt(false)} />
       )}
 
       {activeTab === 'profile' && (
@@ -548,7 +590,7 @@ export default function App() {
         onChangeTab={handleNavChange}
         friendsBadgeCount={profileBadgeCount}
         t={t}
-        onCreatePulse={() => pulsesApiRef.current?.openComposer()}
+        onCreatePulse={() => (userId ? pulsesApiRef.current?.openComposer() : setShowAuthPrompt(true))}
       />
     </div>
   );

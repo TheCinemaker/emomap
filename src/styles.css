@@ -1742,7 +1742,24 @@ button { font-family: inherit; }
   color: var(--fg);
 }
 
+.auth-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--fg-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.auth-close:hover { background: rgba(255, 255, 255, 0.12); color: var(--fg); }
+
 .auth-card {
+  position: relative;
   width: 100%;
   max-width: 380px;
   background: rgba(20, 22, 28, 0.85);
