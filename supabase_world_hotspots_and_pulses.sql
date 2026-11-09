@@ -77,7 +77,7 @@ BEGIN
     'https://images.unsplash.com/photo-1542051841857-5f90071e7989?auto=format&fit=crop&w=1080&q=85',
     'Shibuya is absolutely buzzing tonight! The energy here is insane.',
     'hype',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '18 minutes'
   );
 
@@ -89,7 +89,7 @@ BEGIN
     'https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=1080&q=85',
     'Golden hour over Manhattan. Best city in the world.',
     'love',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '34 minutes'
   );
 
@@ -101,7 +101,7 @@ BEGIN
     'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1080&q=85',
     'Midnight tonkotsu ramen in Shinjuku after a 12h sprint.',
     'motivated',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '52 minutes'
   );
 
@@ -113,7 +113,7 @@ BEGIN
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1080&q=85',
     'Friday breeze at Venice Beach. Pure peace.',
     'happy',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '1 hour 12 minutes'
   );
 
@@ -125,7 +125,7 @@ BEGIN
     'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=1080&q=85',
     'Pentek este a Gozsduban! Megy az orulet.',
     'hype',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '1 hour 45 minutes'
   );
 
@@ -137,7 +137,7 @@ BEGIN
     'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1080&q=85',
     'Croissant & cafe in Montmartre. J''adore cette ville.',
     'love',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '2 hours 20 minutes'
   );
 
@@ -149,7 +149,7 @@ BEGIN
     'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1080&q=85',
     'Early morning walk in Arashiyama. Silence and green everywhere.',
     'happy',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '3 hours 10 minutes'
   );
 
@@ -161,7 +161,7 @@ BEGIN
     'https://images.unsplash.com/photo-1496868834840-5f4c98840aaa?auto=format&fit=crop&w=1080&q=85',
     'Crossing the bridge at dusk. Brooklyn never sleeps.',
     'motivated',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '3 hours 40 minutes'
   );
 
@@ -173,7 +173,7 @@ BEGIN
     'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1080&q=85',
     'Clear skies over the bay today! Ready to build something huge.',
     'hype',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '4 hours 15 minutes'
   );
 
@@ -185,7 +185,7 @@ BEGIN
     'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=1080&q=85',
     'London vibes. The city is glowing tonight.',
     'love',
-    now() + interval '10 years',
+    now() + interval '24 hours',
     now() - interval '5 hours'
   );
 
@@ -248,7 +248,7 @@ SELECT
   35.6595 + (random() - 0.5) * 0.008,
   139.7004 + (random() - 0.5) * 0.008,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 350);
 
 -- Tokyo: Shinjuku Kabukicho & Omoide Yokocho (300 points)
@@ -259,7 +259,7 @@ SELECT
   35.6938 + (random() - 0.5) * 0.012,
   139.7034 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 300);
 
 -- Tokyo: Akihabara Electric Town (200 points)
@@ -270,7 +270,7 @@ SELECT
   35.6983 + (random() - 0.5) * 0.009,
   139.7731 + (random() - 0.5) * 0.009,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 200);
 
 -- Tokyo: Roppongi Nightlife & Hills (180 points)
@@ -281,7 +281,7 @@ SELECT
   35.6628 + (random() - 0.5) * 0.010,
   139.7314 + (random() - 0.5) * 0.010,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 180);
 
 -- Tokyo: Harajuku & Omotesando (180 points)
@@ -292,7 +292,7 @@ SELECT
   35.6702 + (random() - 0.5) * 0.009,
   139.7027 + (random() - 0.5) * 0.009,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 180);
 
 -- Osaka: Dotonbori & Shinsaibashi (220 points)
@@ -303,7 +303,7 @@ SELECT
   34.6687 + (random() - 0.5) * 0.010,
   135.5013 + (random() - 0.5) * 0.010,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 220);
 
 -- Kyoto: Gion & Kiyomizudera (150 points)
@@ -314,7 +314,7 @@ SELECT
   34.9949 + (random() - 0.5) * 0.012,
   135.7850 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 150);
 
 -- ----------------------------------------------------------------------------
@@ -329,7 +329,7 @@ SELECT
   40.7580 + (random() - 0.5) * 0.012,
   -73.9855 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 350);
 
 -- New York: Central Park (220 points)
@@ -340,7 +340,7 @@ SELECT
   40.7829 + (random() - 0.5) * 0.025,
   -73.9654 + (random() - 0.5) * 0.015,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 220);
 
 -- New York: SoHo & Greenwich Village (200 points)
@@ -351,7 +351,7 @@ SELECT
   40.7233 + (random() - 0.5) * 0.010,
   -74.0030 + (random() - 0.5) * 0.010,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 200);
 
 -- New York: Williamsburg & DUMBO, Brooklyn (250 points)
@@ -362,7 +362,7 @@ SELECT
   40.7178 + (random() - 0.5) * 0.015,
   -73.9578 + (random() - 0.5) * 0.015,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 250);
 
 -- Los Angeles: Venice Beach & Boardwalk (250 points)
@@ -373,7 +373,7 @@ SELECT
   33.9850 + (random() - 0.5) * 0.020,
   -118.4695 + (random() - 0.5) * 0.020,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 250);
 
 -- Los Angeles: Santa Monica Pier & Promenade (180 points)
@@ -384,7 +384,7 @@ SELECT
   34.0100 + (random() - 0.5) * 0.012,
   -118.4960 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 180);
 
 -- Los Angeles: Hollywood Blvd & Walk of Fame (180 points)
@@ -395,7 +395,7 @@ SELECT
   34.1016 + (random() - 0.5) * 0.015,
   -118.3268 + (random() - 0.5) * 0.015,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 180);
 
 -- San Francisco: SOMA & Mission District (200 points)
@@ -406,7 +406,7 @@ SELECT
   37.7749 + (random() - 0.5) * 0.020,
   -122.4194 + (random() - 0.5) * 0.020,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 200);
 
 -- Miami: South Beach & Ocean Drive (200 points)
@@ -417,7 +417,7 @@ SELECT
   25.7825 + (random() - 0.5) * 0.015,
   -80.1340 + (random() - 0.5) * 0.015,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 200);
 
 -- ----------------------------------------------------------------------------
@@ -432,7 +432,7 @@ SELECT
   47.4980 + (random() - 0.5) * 0.010,
   19.0550 + (random() - 0.5) * 0.010,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 250);
 
 -- Budapest: Buda Castle & Gellérthegy (120 points)
@@ -443,7 +443,7 @@ SELECT
   47.4962 + (random() - 0.5) * 0.010,
   19.0396 + (random() - 0.5) * 0.010,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 120);
 
 -- Budapest: BME & Egyetemváros (120 points)
@@ -454,7 +454,7 @@ SELECT
   47.4815 + (random() - 0.5) * 0.008,
   19.0556 + (random() - 0.5) * 0.008,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 120);
 
 -- Kőszeg: Fő tér & Jurisics Vár (80 points)
@@ -465,7 +465,7 @@ SELECT
   47.3886 + (random() - 0.5) * 0.006,
   16.5412 + (random() - 0.5) * 0.006,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 80);
 
 -- Szombathely: Fő tér & Csónakázótó (90 points)
@@ -476,7 +476,7 @@ SELECT
   47.2307 + (random() - 0.5) * 0.008,
   16.6218 + (random() - 0.5) * 0.008,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 90);
 
 -- London: Soho, Covent Garden & West End (200 points)
@@ -487,7 +487,7 @@ SELECT
   51.5136 + (random() - 0.5) * 0.015,
   -0.1365 + (random() - 0.5) * 0.015,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 200);
 
 -- Paris: Montmartre, Le Marais & Eiffel (200 points)
@@ -498,7 +498,7 @@ SELECT
   48.8566 + (random() - 0.5) * 0.018,
   2.3522 + (random() - 0.5) * 0.018,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 200);
 
 -- Vienna: Stephansplatz & Ringstraße (120 points)
@@ -509,7 +509,7 @@ SELECT
   48.2082 + (random() - 0.5) * 0.012,
   16.3738 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 120);
 
 -- Berlin: Mitte & Kreuzberg (150 points)
@@ -520,7 +520,7 @@ SELECT
   52.5200 + (random() - 0.5) * 0.018,
   13.4050 + (random() - 0.5) * 0.018,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 150);
 
 -- ----------------------------------------------------------------------------
@@ -535,7 +535,7 @@ SELECT
   37.4979 + (random() - 0.5) * 0.015,
   127.0276 + (random() - 0.5) * 0.015,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 100);
 
 -- Singapore: Marina Bay (80 points)
@@ -546,7 +546,7 @@ SELECT
   1.2838 + (random() - 0.5) * 0.012,
   103.8591 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 80);
 
 -- Sydney: Circular Quay & Opera House (80 points)
@@ -557,5 +557,5 @@ SELECT
   -33.8568 + (random() - 0.5) * 0.012,
   151.2153 + (random() - 0.5) * 0.012,
   true,
-  now() - (floor(random() * 720) || ' minutes')::interval
+  now() - (floor(random() * 55) || ' minutes')::interval
 FROM generate_series(1, 80);

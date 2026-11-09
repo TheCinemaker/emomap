@@ -16,9 +16,15 @@ export function useEmotionsPolling(bounds, sessionId, onBatch) {
     let cancelled = false;
 
     async function fetchOnce() {
+      // First-load fallback only — this drives the individual live-vote
+      // pulse-flash animation, which should only ever flash genuinely
+      // fresh votes, not replay an entire day's worth at once (briefly
+      // widened to 24h to keep a seed script's stale demo votes flashing
+      // on load — reverted; the seed's own timestamps should be recent,
+      // not the polling window stretched to match stale ones).
       const sinceIso =
         lastFetchRef.current ||
-        new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        new Date(Date.now() - 10 * 1000).toISOString();
 
       const { data, error } = await supabase
         .from('emotions')
