@@ -151,7 +151,11 @@ export default function FriendsPage({ userId, t, onlineIds, onOpenDetails }) {
     try {
       await sendRequestTo(targetId);
     } catch (err) {
-      setError(err.message === 'already_requested' ? t('friends_add_error_already') : t('friends_add_error_generic'));
+      setError(
+        err.message === 'already_requested' ? t('friends_add_error_already')
+        : err.message === 'rate_limited' ? t('friends_add_error_rate_limited')
+        : t('friends_add_error_generic')
+      );
     } finally {
       setSendingId(null);
     }

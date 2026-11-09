@@ -121,6 +121,11 @@ export function useFriends(userId) {
     const { error } = await supabase.from('friendships').insert({ requester_id: userId, addressee_id: targetId });
     if (error) {
       if (error.code === '23505') throw new Error('already_requested');
+      // RLS WITH CHECK failure (42501) covers more than just the rate
+      // limit, but check_friend_request_rate_limit() is the only check()
+      // clause on this policy likely to fail for an otherwise-valid
+      // request, so it's a safe-enough signal to show a specific message.
+      if (error.code === '42501') throw new Error('rate_limited');
       throw error;
     }
     await refresh();
