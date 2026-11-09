@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Pulse – The Emotional Pulse of the World",
   "short_name": "Pulse",
-  "description": "A világ hangulata, valós időben.",
+  "description": "A live map of how people feel around the globe.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
