@@ -22,7 +22,12 @@
 create index if not exists emotions_grid_query_idx
   on public.emotions (is_active, inserted_at, lat, lng);
 
--- ── 1. Account pool: 50,000 accounts, ONE statement (fast, <5s typically) ──
+-- ── 1. Account pool: 50,000 accounts, ONE statement ─────────────────────────
+-- encrypted_password is a fixed placeholder, NOT a real per-row bcrypt hash
+-- (crypt()/gen_salt('bf') is deliberately slow — that's the whole point of
+-- bcrypt — and hashing it 50,000 times is almost certainly what the
+-- timeout hit). These accounts never log in for real, so a hash that
+-- doesn't actually match any password is completely fine.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -34,7 +39,7 @@ select
   gen_random_uuid(),
   'authenticated', 'authenticated',
   'loadtest-' || g || '@emomap.local',
-  crypt('loadtest-' || g, gen_salt('bf')),
+  '$2a$06$abcdefghijklmnopqrstuuJqK5r3Jm8yXy2bXWnL0p9yQ8qf1aO2',
   now(),
   '{"provider":"email","providers":["email"]}',
   jsonb_build_object('username', 'lt_' || lpad(g::text, 5, '0'), 'is_loadtest', true),
