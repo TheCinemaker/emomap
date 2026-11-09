@@ -69,29 +69,43 @@ export function cellIntensity(total) {
 // scaled to 1/4 of their original size. Scaling both endpoints by the same
 // factor scales the entire log-linear curve by that same factor at every
 // zoom level, not just the ends.
+const CAL_ZOOM_WORLD = 2;
+const CAL_SIZE_WORLD_DEG = 3;       // ~330km — continent-scale bucket
 const CAL_ZOOM_CITY = 10;
 const CAL_SIZE_CITY_DEG = 0.0825;   // ~9km (was 0.33 / ~37km)
 const CAL_ZOOM_BAR = 18;
 const CAL_SIZE_BAR_DEG = 0.0000275; // ~3m (was 0.00011 / ~12m)
 
 // NOTE: this only controls the CLUSTERING bucket — how close two votes need
-// to be before they're merged into one group as you zoom in/out. It no
-// longer drives the rendered size directly; buildGridCells below computes
+// to be before they're merged into one group as you zoom in/out. It does
+// NOT drive the rendered size directly; buildGridCells/get_mood_grid compute
 // that from the actual spread of points inside each bucket (see
-// AURA_POINT_RADIUS_M above). A bucket can be city-sized at a low zoom
-// without the rendered aura itself being city-sized — it only grows that
-// big if real votes are actually spread across the city.
+// AURA_POINT_RADIUS_M above). A bucket can be huge at a low zoom without the
+// rendered aura itself being huge — it only grows that big if real votes are
+// actually spread across that whole area.
+//
+// Three-point calibration, not two: a Gemini review (2026-11-09, after a
+// live get_mood_grid timeout at world-zoom) found that clamping below zoom
+// 10 pinned the bucket at the FULL CITY size (~9km) no matter how far out
+// you zoomed — a whole-continent view (zoom 2-4) still asked Postgres to
+// grid the entire area into ~9km buckets, producing tens of thousands of
+// distinct groups for one query. That clamp existed because, before the
+// render-size/bucket-size decoupling above existed, letting the bucket grow
+// past city-size at low zoom WAS the literal cause of an earlier bug (a
+// single vote rendering as a circle swallowing half of Europe). Now that
+// render size is driven by actual GPS spread instead, the bucket is free to
+// keep coarsening below city zoom too — it only changes grouping, not how
+// big anything looks — so a third calibration point (continent-scale, ~3°)
+// lets it do that instead of flatlining.
 export function calculateCellSize(zoomLevel) {
-  // t is only calibrated for the [CAL_ZOOM_CITY, CAL_ZOOM_BAR] range — left
-  // unclamped, zooming out further than "city" (e.g. a whole-continent
-  // default view at zoom 4-5) drove t negative and the log-linear curve
-  // extrapolated exponentially past the city size, hitting the old 10deg
-  // safety clamp: a single vote rendered as a circle swallowing half of
-  // Europe. Clamping t to [0, 1] caps the size at the two calibration
-  // points themselves — city-level (~37km) is already the intended "one
-  // big pulse" look for a zoomed-out view, it should never grow past that
-  // no matter how far out the camera goes.
-  const t = Math.max(0, Math.min(1, (zoomLevel - CAL_ZOOM_CITY) / (CAL_ZOOM_BAR - CAL_ZOOM_CITY)));
+  if (zoomLevel <= CAL_ZOOM_WORLD) return CAL_SIZE_WORLD_DEG;
+  if (zoomLevel >= CAL_ZOOM_BAR) return CAL_SIZE_BAR_DEG;
+  if (zoomLevel <= CAL_ZOOM_CITY) {
+    const t = (zoomLevel - CAL_ZOOM_WORLD) / (CAL_ZOOM_CITY - CAL_ZOOM_WORLD);
+    const logSize = Math.log(CAL_SIZE_WORLD_DEG) + t * (Math.log(CAL_SIZE_CITY_DEG) - Math.log(CAL_SIZE_WORLD_DEG));
+    return Math.exp(logSize);
+  }
+  const t = (zoomLevel - CAL_ZOOM_CITY) / (CAL_ZOOM_BAR - CAL_ZOOM_CITY);
   const logSize = Math.log(CAL_SIZE_CITY_DEG) + t * (Math.log(CAL_SIZE_BAR_DEG) - Math.log(CAL_SIZE_CITY_DEG));
   return Math.exp(logSize);
 }
