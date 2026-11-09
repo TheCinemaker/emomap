@@ -175,8 +175,12 @@ export default function PulsesPage({ session, t, onReady, onRequireAuth }) {
   }, [userId, t]);
 
   useEffect(() => {
-    // Pre-warm GPU neural network in the background so photo checks run in ~120ms
-    warmupModerationModel();
+    // AI model warmup moved to openComposer() below — loading it here, on
+    // every single mount of this page, blocked the main thread right at
+    // the moment of navigating to Moments ("kifagy... de betöltés után jó"
+    // — froze on load, fine afterwards — an iPhone 16 Pro report,
+    // 2026-11-09). Nobody needs the moderation model just to scroll the
+    // feed; only actually opening the composer does.
     fetchPulses();
     const ch = supabase
       .channel('pulses_global_live')
@@ -381,6 +385,9 @@ export default function PulsesPage({ session, t, onReady, onRequireAuth }) {
     if (!userId) { onRequireAuth?.(); return; }
     resetComposer();
     setComposerOpen(true);
+    // Only load the (heavyweight) AI moderation model once someone is
+    // actually about to post — not on every page visit just to scroll.
+    warmupModerationModel();
   }, [resetComposer, userId, onRequireAuth]);
 
   useEffect(() => {
