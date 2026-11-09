@@ -8,7 +8,7 @@ import { LANGUAGES } from '../i18n';
 import { IconUser, IconPencil, IconFire, IconBuilding } from './Icons';
 import { compressImage } from '../imageCompress';
 
-const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US' };
+const LOCALE_BY_LANG = { hu: 'hu-HU', de: 'de-DE', en: 'en-US', ja: 'ja-JP' };
 const DAY_MS = 24 * 60 * 60 * 1000;
 const STREAK_SAMPLE_LIMIT = 400; // plenty for any realistic streak length
 
