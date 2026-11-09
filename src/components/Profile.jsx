@@ -34,7 +34,7 @@ function computeStreak(dates) {
   return streak;
 }
 
-export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFriends, onOpenDetails, onOpenVenueCRM }) {
+export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFriends, onOpenDetails, onOpenVenueCRM, onPartnerRequest }) {
   const [profile, setProfile] = useState(null);
   const [voteCount, setVoteCount] = useState(null);
   const [streak, setStreak] = useState(null);
@@ -148,9 +148,13 @@ export default function Profile({ userId, lang, setLang, t, onLogout, onOpenFrie
         <button type="button" className="profile-friends-btn" onClick={onOpenDetails}>
           {t('details_open')}
         </button>
-        {profile?.is_partner && (
+        {profile?.is_partner ? (
           <button type="button" className="profile-friends-btn profile-partner-btn" onClick={onOpenVenueCRM}>
             <IconBuilding width={16} height={16} /> {t('venue_crm_open')}
+          </button>
+        ) : (
+          <button type="button" className="profile-friends-btn" onClick={onPartnerRequest}>
+            <IconBuilding width={16} height={16} /> {t('partner_request_open')}
           </button>
         )}
         <button type="button" className="profile-logout" onClick={onLogout}>{t('logout')}</button>

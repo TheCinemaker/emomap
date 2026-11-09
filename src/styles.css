@@ -1769,6 +1769,20 @@ button { font-family: inherit; }
   font-size: 14px;
   cursor: pointer;
 }
+.guest-gate-link {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--fg-muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.guest-gate-link:hover { color: var(--fg); }
 
 .auth-close {
   position: absolute;
@@ -1809,7 +1823,8 @@ button { font-family: inherit; }
 .auth-field { display: flex; flex-direction: column; gap: 6px; }
 .auth-field > span { font-size: 12px; font-weight: 500; color: var(--fg-muted); }
 
-.auth-field input {
+.auth-field input,
+.auth-field textarea {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border);
   color: var(--fg);
@@ -1819,9 +1834,12 @@ button { font-family: inherit; }
   font-family: inherit;
   outline: none;
   transition: border-color 0.15s ease, background 0.15s ease;
+  resize: vertical;
 }
-.auth-field input::placeholder { color: #5b6478; }
-.auth-field input:focus { border-color: var(--accent); background: rgba(255, 255, 255, 0.06); }
+.auth-field input::placeholder,
+.auth-field textarea::placeholder { color: #5b6478; }
+.auth-field input:focus,
+.auth-field textarea:focus { border-color: var(--accent); background: rgba(255, 255, 255, 0.06); }
 
 .auth-input-wrap { position: relative; }
 .auth-input-wrap input { width: 100%; padding-right: 34px; }

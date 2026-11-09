@@ -26,7 +26,8 @@ import Profile from './components/Profile';
 import { useUnreadMessageCount } from './useChat';
 import ProfileDetails from './components/ProfileDetails';
 import FriendDetails from './components/FriendDetails';
-import { IconGlobe, IconPlay, IconPause } from './components/Icons';
+import PartnerRequestForm from './components/PartnerRequestForm';
+import { IconGlobe, IconPlay, IconPause, IconBuilding } from './components/Icons';
 // RandomMatch (anonymous stranger photo-swap) is intentionally not mounted —
 // shelved per the product-risk call (moderation/legal exposure), kept in the
 // codebase for a possible later, non-random, safety-first redesign.
@@ -105,6 +106,11 @@ export default function App() {
   // triggered on demand (voting, posting, Friends/Profile, the nav's own
   // "Sign in" button) instead of blocking the entire app up front.
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  // Lead-capture for "I run a venue, I want to advertise" — the Partner CRM
+  // itself stays invite-only, but until a visible entry point existed,
+  // a business owner landing from the Reddit/X launch posts had literally
+  // no way to express interest. 2026-11-09.
+  const [showPartnerRequest, setShowPartnerRequest] = useState(false);
   // PulsesPage registers its composer-open function here so the bottom nav's
   // Pulses-only center button can trigger it without lifting all of that
   // page's upload/composer state up into App.
@@ -404,6 +410,15 @@ export default function App() {
                 <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4.5a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8Zm1.2 11h-2.4a.8.8 0 0 1 0-1.6h.4v-4.4h-.4a.8.8 0 0 1 0-1.6h1.6c.44 0 .8.36.8.8v5.2h.4a.8.8 0 0 1 0 1.6Z"/>
               </svg>
             </button>
+            <button
+              type="button"
+              className="app-icon-btn"
+              onClick={() => setShowPartnerRequest(true)}
+              aria-label={t('partner_request_open')}
+              title={t('partner_request_open')}
+            >
+              <IconBuilding width={18} height={18} />
+            </button>
           </div>
         </header>
       )}
@@ -414,6 +429,10 @@ export default function App() {
 
       {showAuthPrompt && (
         <Auth onClose={() => setShowAuthPrompt(false)} />
+      )}
+
+      {showPartnerRequest && (
+        <PartnerRequestForm userId={userId} t={t} onClose={() => setShowPartnerRequest(false)} />
       )}
 
       {activeTab === 'profile' && (
@@ -427,9 +446,10 @@ export default function App() {
             onOpenFriends={() => setActiveTab('friends')}
             onOpenDetails={() => setShowOwnDetails(true)}
             onOpenVenueCRM={() => setShowVenueCRM(true)}
+            onPartnerRequest={() => setShowPartnerRequest(true)}
           />
         ) : (
-          <GuestGate t={t} onSignIn={() => setShowAuthPrompt(true)} />
+          <GuestGate t={t} onSignIn={() => setShowAuthPrompt(true)} onPartnerRequest={() => setShowPartnerRequest(true)} />
         )
       )}
 
@@ -464,7 +484,7 @@ export default function App() {
             onOpenDetails={(friendId, friendName) => setViewDetailsFor({ friendId, friendName })}
           />
         ) : (
-          <GuestGate t={t} onSignIn={() => setShowAuthPrompt(true)} />
+          <GuestGate t={t} onSignIn={() => setShowAuthPrompt(true)} onPartnerRequest={() => setShowPartnerRequest(true)} />
         )
       )}
 
@@ -611,7 +631,7 @@ export default function App() {
 // Shown in place of Friends/Profile for a guest — the bottom nav stays
 // fully visible and usable above it (unlike the Auth overlay, which
 // covers the whole screen), so tapping back to Map always just works.
-function GuestGate({ t, onSignIn }) {
+function GuestGate({ t, onSignIn, onPartnerRequest }) {
   return (
     <section className="guest-gate" aria-label="Sign in required">
       <IconGlobe className="guest-gate-icon" aria-hidden width={36} height={36} />
@@ -619,6 +639,11 @@ function GuestGate({ t, onSignIn }) {
       <button type="button" className="guest-gate-btn" onClick={onSignIn}>
         {t('auth_submit_signin')}
       </button>
+      {onPartnerRequest && (
+        <button type="button" className="guest-gate-link" onClick={onPartnerRequest}>
+          <IconBuilding width={14} height={14} /> {t('partner_request_open')}
+        </button>
+      )}
     </section>
   );
 }
