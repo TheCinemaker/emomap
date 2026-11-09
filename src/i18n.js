@@ -800,6 +800,20 @@ export function getStoredLanguage() {
   } catch {
     // localStorage unavailable (private mode, etc.) — fall through to default
   }
+  // First-ever visit, nothing saved yet: match the browser's own language
+  // (e.g. "ja", "ja-JP") instead of always defaulting to English — a
+  // Japanese visitor's first impression shouldn't depend on them finding
+  // the language switcher in Profile first. Gemini review finding
+  // (2026-11-09), verified against this function before acting on it.
+  try {
+    const candidates = navigator.languages?.length ? navigator.languages : [navigator.language];
+    for (const tag of candidates) {
+      const primary = tag?.split('-')[0]?.toLowerCase();
+      if (primary && LANGUAGES.includes(primary)) return primary;
+    }
+  } catch {
+    // navigator unavailable in some embedded/SSR-like context — fall through
+  }
   return DEFAULT_LANGUAGE;
 }
 
