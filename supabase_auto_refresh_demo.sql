@@ -23,9 +23,12 @@ create or replace function public.refresh_demo_hotspots()
 returns void
 language sql
 as $$
-  with deactivated as (
-    update public.emotions
-    set is_active = false
+  -- DELETE, not deactivate: 2026-11-09 fix (see supabase_fix_slow_refresh.sql)
+  -- — soft-deactivating left ~50k dead rows behind on every single 40-minute
+  -- cycle forever, which is exactly what made both the table and this very
+  -- function slower over time until it started timing out.
+  with deleted as (
+    delete from public.emotions
     where is_active = true
       and user_id in (
         select id from auth.users
