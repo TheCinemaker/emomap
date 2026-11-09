@@ -35,13 +35,23 @@ export function useGeolocation() {
         errorMessage = 'A felhasználó megtagadta a helymeghatározást. Kérlek, engedélyezd a böngésződben!';
       } else if (err.code === 2) {
         errorMessage = 'A pozíció nem érhető el (pl. gyenge jel).';
+      } else if (err.code === 3) {
+        errorMessage = 'Időtúllépés a helymeghatározás közben.';
       }
       setError(errorMessage);
     };
 
     // 4. Beállítások a watchPosition-höz
+    // enableHighAccuracy:false — iOS Safarin (pláne beltérben) a true érték
+    // megvárja a pontos GPS-zárást, ami percekig is eltarthat vagy sosem
+    // fut le (user report, 2026-11-09: "iphone-on nem megy a
+    // tartozkodási hely, hiába adtam engedélyt" — az engedély megvolt, a
+    // pozíció-fix sosem érkezett meg). Mivel a szavazatok koordinátáit
+    // amúgy is ~10 méterrel eltoljuk adatvédelmi okból, nincs szükség
+    // GPS-pontosságra — a gyorsabb WiFi/cella-alapú becslés bőven elég,
+    // és jóval megbízhatóbban, pár másodperc alatt megérkezik.
     const options = {
-      enableHighAccuracy: true, // Magas pontosság kérése (jobb GPS/Wi-Fi)
+      enableHighAccuracy: false,
       timeout: 15000,         // Maximális idő a várakozásra
       maximumAge: 5000        // Maximum 5 mp-nél régebbi cachelt pozíciót fogadunk el
     };

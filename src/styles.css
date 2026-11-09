@@ -1732,8 +1732,15 @@ button { font-family: inherit; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
+  /* "safe center": centers short content (the login form) like before,
+     but falls back to top-alignment instead of centering once content is
+     taller than the screen — a longer form (e.g. the partner-request
+     one) no longer pushes its own close button and submit button off
+     both edges of the viewport with no way to scroll to them. Paired
+     with overflow-y so it's actually scrollable in that case. */
+  justify-content: safe center;
+  overflow-y: auto;
+  padding: 24px 24px calc(24px + var(--safe-bottom));
   background:
     radial-gradient(1200px 600px at 20% 0%, rgba(99, 102, 241, 0.18), transparent 60%),
     radial-gradient(900px 500px at 100% 100%, rgba(236, 72, 153, 0.12), transparent 60%),
