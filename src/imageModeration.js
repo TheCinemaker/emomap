@@ -10,7 +10,13 @@
 // 3. Harmless objects (wooden doors, palms, hands, beige walls, faces -> ALLOWED).
 // 4. Real local blood/gore detection alongside Cloudflare Workers AI cloud vision.
 
-const TFJS_CDN = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js';
+// nsfwjs.min.js bundles its own internal copy of @tensorflow/tfjs-core and
+// the webgl/cpu backends — separately loading the plain @tensorflow/tfjs
+// CDN script first (as this used to) makes BOTH copies register the same
+// WebGL kernels, which TFJS allows but warns about for every single
+// kernel ("already registered") — "millió ilyen van a konzolban" was this.
+// Nothing else in this file references window.tf, so that load was pure
+// redundant duplication, not an actual nsfwjs prerequisite.
 const NSFWJS_CDN = 'https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js';
 const MODEL_URL_PRIMARY =
   'https://cdn.jsdelivr.net/gh/infinitered/nsfwjs@master/models/mobilenet_v2/';
@@ -43,7 +49,6 @@ async function getPrimaryModel() {
   if (!primaryModelPromise) {
     primaryModelPromise = (async () => {
       try {
-        if (!window.tf) await loadScript(TFJS_CDN);
         if (!window.nsfwjs) await loadScript(NSFWJS_CDN);
         const model = await window.nsfwjs.load(MODEL_URL_PRIMARY, { size: 224 });
         // Warm up WebGL shaders with a tiny 224x224 blank canvas so subsequent calls are instant
