@@ -41,7 +41,7 @@ export default function BottomNav({ activeTab, onChangeTab, friendsBadgeCount = 
             <path d="M13.5 2 4 13.5h6.5L9.5 22 20 10.5h-6.5L13.5 2Z" />
           </svg>
         </span>
-        <span className="bottom-nav-label">Pulses</span>
+        <span className="bottom-nav-label">{t('nav_pulses')}</span>
       </button>
 
       <button

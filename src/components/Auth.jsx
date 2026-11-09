@@ -167,7 +167,7 @@ export default function Auth() {
 
         <div className="auth-brand">
           <IconGlobe className="auth-logo" aria-hidden width={28} height={28} />
-          <h1 className="auth-brand-name">EmoMap</h1>
+          <h1 className="auth-brand-name">Pulse</h1>
         </div>
         <p className="auth-tagline">
           {isSignUp ? t('auth_tagline_signup') : t('auth_tagline_signin')}

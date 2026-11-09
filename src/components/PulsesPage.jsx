@@ -244,11 +244,11 @@ export default function PulsesPage({ session, t, onReady }) {
   const handleShare = async (pulse) => {
     const shareUrl = window.location.origin;
     const shareText = pulse.caption
-      ? `${pulse.username}: "${pulse.caption}" — EmoMap Pulses`
-      : `${pulse.username} on EmoMap Pulses`;
+      ? `${pulse.username}: "${pulse.caption}" — Pulse Moments`
+      : `${pulse.username} on Pulse Moments`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'EmoMap Pulses', text: shareText, url: shareUrl });
+        await navigator.share({ title: 'Pulse Moments', text: shareText, url: shareUrl });
       } else {
         await navigator.clipboard.writeText(shareUrl);
         showToast(t('pulses_link_copied'));
@@ -453,12 +453,12 @@ export default function PulsesPage({ session, t, onReady }) {
   };
 
   return (
-    <section className="pulses-page" aria-label="Pulses">
+    <section className="pulses-page" aria-label="Moments">
       {/* Top floating bar */}
       <div className="pulses-topbar">
         <div className="pulses-topbar-title">
           <IconBolt className="pulses-bolt" aria-hidden width={18} height={18} />
-          <h2>Pulses</h2>
+          <h2>Moments</h2>
         </div>
       </div>
 

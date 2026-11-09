@@ -22,7 +22,7 @@ const LoadingScreen = ({ onComplete }) => {
   return (
     <div className="loading-screen">
       <IconGlobe className="loading-screen-icon" aria-hidden width={48} height={48} />
-      <h1 className="loading-screen-name">EmoMap</h1>
+      <h1 className="loading-screen-name">Pulse</h1>
       <div className="loading-screen-bar-track">
         <div className="loading-screen-bar-fill" style={{ width: `${Math.min(100, progress)}%` }} />
       </div>

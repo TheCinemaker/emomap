@@ -333,7 +333,7 @@ export default function App() {
           <div className="app-top-row">
             <div className="app-brand">
               <IconGlobe className="app-brand-icon" aria-hidden width={22} height={22} />
-              <h1 className="app-brand-name">EmoMap</h1>
+              <h1 className="app-brand-name">Pulse</h1>
             </div>
             <button
               type="button"

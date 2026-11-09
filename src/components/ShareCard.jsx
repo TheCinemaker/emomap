@@ -126,7 +126,7 @@ async function drawCard(canvas, stats, lang, t, avatarUrl) {
   // system emoji font to render 🌍 consistently across devices.
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   ctx.font = `600 44px ${sys}`;
-  const brandText = 'EmoMap';
+  const brandText = 'Pulse';
   const brandIconR = 20;
   const brandGap = 14;
   const brandTextWidth = ctx.measureText(brandText).width;
@@ -268,7 +268,7 @@ export default function ShareCard({ userId, lang, t, onClose }) {
     if (!downloadUrl) return;
     const a = document.createElement('a');
     a.href = downloadUrl;
-    a.download = 'emomap-weekly.png';
+    a.download = 'pulse-weekly.png';
     a.click();
   };
 
@@ -277,9 +277,9 @@ export default function ShareCard({ userId, lang, t, onClose }) {
     try {
       canvasRef.current.toBlob(async (blob) => {
         if (!blob) return;
-        const file = new File([blob], 'emomap-weekly.png', { type: 'image/png' });
+        const file = new File([blob], 'pulse-weekly.png', { type: 'image/png' });
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try { await navigator.share({ files: [file], title: 'EmoMap' }); } catch { /* cancelled */ }
+          try { await navigator.share({ files: [file], title: 'Pulse' }); } catch { /* cancelled */ }
         } else {
           handleDownload();
         }
